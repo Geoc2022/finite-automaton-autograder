@@ -1,0 +1,63 @@
+{
+  "nodes": [
+    {
+      "name": "q0",
+      "id": 0,
+      "group": "start"
+    },
+    {
+      "name": "q1",
+      "id": 1,
+      "group": "accept"
+    },
+    {
+      "name": "q2",
+      "id": 2,
+      "group": "normal"
+    }
+  ],
+  "links": [
+    {
+      "source_name": "q0",
+      "target_name": "q1",
+      "source": 0,
+      "target": 1,
+      "label": "a"
+    },
+    {
+      "source_name": "q1",
+      "target_name": "q1",
+      "source": 1,
+      "target": 1,
+      "label": "a"
+    },
+    {
+      "source_name": "q1",
+      "target_name": "q2",
+      "source": 1,
+      "target": 2,
+      "label": "b"
+    },
+    {
+      "source_name": "q1",
+      "target_name": "q1",
+      "source": 1,
+      "target": 1,
+      "label": "c"
+    },
+    {
+      "source_name": "q2",
+      "target_name": "q2",
+      "source": 2,
+      "target": 2,
+      "label": "a"
+    },
+    {
+      "source_name": "q2",
+      "target_name": "q0",
+      "source": 2,
+      "target": 0,
+      "label": "b"
+    }
+  ]
+}
