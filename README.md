@@ -1,4 +1,4 @@
-# FA Grader
+# Finite Automaton Autograder
 
 Prototype of a tool for 1010 students to use for creating and testing their FA.
 
@@ -29,9 +29,9 @@ You can edit the JSON file to get a different result or create your own DFA obje
 
 - Add everything (e.g. group names) in `dfa_render.html` to `dfa_create.html` s.t. `create` \supset `render`
 
-- Make `dfa_create.html` use standard notation
-
 - Add LaTeX support to renders (e.g Greek symbols)
+
+- Make `dfa_create.html` use standard notation
 
 - Add a test file which would do the autograding
 
