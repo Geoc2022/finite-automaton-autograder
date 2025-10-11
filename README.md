@@ -33,6 +33,8 @@ You can edit the JSON file to get a different result or create your own DFA obje
 
 - Add LaTeX support to renders (e.g Greek symbols)
 
+- Add a test file which would do the autograding
+
 - Add a FA library to hold the reused rendering functions
 
 - Export to LaTeX Tikz Diagrams (?)
