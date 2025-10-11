@@ -25,6 +25,80 @@ You can edit the JSON file to get a different result or create your own DFA obje
 
 ![Create](./img/create.png)
 
+
+## Running and Testing a DFA
+
+Check out the example in `grader.py` bellow:
+
+```python
+# Constructing a DFA that accepts binary strings that are multiples of 3
+dfa = DFA(
+    states={'q0', 'q1', 'q2'},
+    alphabet={'1', '0'},
+    transitions={
+        'q0': {'0': 'q0', '1': 'q1'},
+        'q1': {'0': 'q2', '1': 'q0'},
+        'q2': {'0': 'q1', '1': 'q2'}
+    },
+    start_state='q0',
+    accept_states={'q0'}
+)
+
+wrong_dfa = DFA(
+    states={'q0', 'q1', 'q2'},
+    alphabet={'1', '0'},
+    transitions={
+        'q0': {'0': 'q0', '1': 'q1'},
+        'q1': {'0': 'q2', '1': 'q0'},
+        'q2': {'0': 'q1', '1': 'q3'}
+    },
+    start_state='q0',
+    accept_states={'q0', 'q2'} # Incorrectly accepts q2
+)
+
+autograder = Grader()
+
+autograder.add_test(
+        lambda x: (bin(x * 3)[2:], True), 10
+)
+autograder.add_test(
+        lambda x: (bin(x * 3 + 1)[2:], False), 10
+)
+
+autograder.add_test(
+        lambda x: (bin(x)[2:], x % 3 == 0), 10
+)
+
+def random_test(_: int):
+    n = random.randint(0, 1000)
+    return (bin(n)[2:], n % 3 == 0)
+autograder.add_test(
+        random_test, 2
+)
+
+print("Testing correct DFA:")
+autograder.run(dfa)
+
+print("\nTesting incorrect DFA:")
+autograder.run(wrong_dfa)
+```
+
+Which outputs:
+
+```
+Testing correct DFA:
+Test 1: Passed
+Test 2: Passed
+Test 3: Passed
+Test 4: Passed
+
+Testing incorrect DFA:
+Test 1: Failed
+Test 2: Passed
+Test 3: Failed
+Test 4: Passed
+```
+
 ## TODO
 
 - Add everything (e.g. group names) in `dfa_render.html` to `dfa_create.html` s.t. `create` \supset `render`
