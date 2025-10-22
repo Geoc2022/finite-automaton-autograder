@@ -7,247 +7,450 @@
   <script src="//cdn.jsdelivr.net/npm/force-graph"></script>
 </head>
 
+<style>
+  /* Based on quiver */
+  :root {
+    --ui-black: #000;
+    --ui-white: #eee;
+    --ui-border: #666;
+  }
+
+  .global-panel {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    height: 46px;
+    padding: 4px 12px;
+    z-index: 101;
+    background: var(--ui-black);
+    border-radius: 8px 8px 0 0;
+    text-align: center;
+    font-family: sans-serif;
+    font-size: 14px;
+    color: var(--ui-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .panel-button {
+    display: inline-block;
+    background: transparent;
+    border: 1px solid var(--ui-border);
+    border-radius: 6px;
+    color: var(--ui-white);
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s ease;
+  }
+
+  .panel-button:hover {
+    background: hsla(0, 0%, 20%, 0.9);
+  }
+
+  .port {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    padding: 20px 24px;
+    padding-bottom: calc(46px + 8px);
+    overflow-y: auto;
+    background: hsla(0, 0%, 10%, 0.8);
+    backdrop-filter: blur(4px);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .port-content {
+    background: #111;
+    color: #eee;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 16px;
+    max-width: 90%;
+    width: 700px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+
+  .port-close {
+    margin-top: 16px;
+    background: transparent;
+    border: 1px solid #777;
+    color: #fff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+</style>
+
+<!-- Panel -->
+<div class="global-panel">
+  Export:
+  <button class="panel-button" id="urlBtn">URL</button>
+  <button class="panel-button" id="latexBtn">LaTeX</button>
+</div>
+
+<!-- Overlay -->
+<div class="port" id="overlayPort">
+  <div class="port-content" id="portContent"></div>
+  <button class="port-close" id="closeOverlay">Close</button>
+</div>
+
 <body>
   <br />
-  <div style="text-align: center; color: silver">
+  <div style="text-align: center; color: var(--ui-border); background-color: transparent;">
     <b>New node:</b> click on the canvas,
-    <b>New link:</b> Shift+click source node and then click target node or drag one node close enough to another one
+    <b>New link:</b> Shift+click source node and then click target node
     <br>
     <b>Rename</b> node or link by clicking on it,
     <b>Remove</b> node or link by right-clicking on it, <br>
   </div>
-  <button id="downloadBtn" style="margin:10px;">Download JSON</button>
   <div id="graph"></div>
+</body>
 
-  <script>
-    document.getElementById('downloadBtn').addEventListener('click', () => {
-      const exportData = {
-        nodes: nodes.map(n => ({
-          id: n.id,
-          name: n.name,
-          group: n.group ?? 'normal',
-        })),
-        links: links.map(l => ({
-          source: typeof l.source === 'object' ? l.source.id : l.source,
-          target: typeof l.target === 'object' ? l.target.id : l.target,
-          source_name: typeof l.source === 'object' ? l.source.name : nodes.find(n => n.id === l.source)?.name,
-          target_name: typeof l.target === 'object' ? l.target.name : nodes.find(n => n.id === l.target)?.name,
-          label: l.name ?? 'a'
-        }))
-      };
+<script>
+  function encodeDFAForURL(nodes, links) {
+    const exportData = {
+      nodes: nodes.map(n => ({
+        id: n.id,
+        name: n.name,
+        group: n.group ?? "normal"
+      })),
+      links: links.map(l => ({
+        source: typeof l.source === "object" ? l.source.id : l.source,
+        target: typeof l.target === "object" ? l.target.id : l.target,
+        label: l.name ?? l.label ?? "a"
+      }))
+    };
 
-      const jsonStr = JSON.stringify(exportData, null, 2);
-      const blob = new Blob([jsonStr], {type: 'application/json'});
-      const url = URL.createObjectURL(blob);
+    const json = JSON.stringify(exportData);
+    const encoded = btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    return encoded;
+  }
 
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'dfa.json';
-      a.click();
+  function decodeDFAFromURL(encoded) {
+    try {
+      const json = atob(encoded.replace(/-/g, "+").replace(/_/g, "/"));
+      return JSON.parse(json);
+    } catch (e) {
+      console.error("Invalid DFA data in URL", e);
+      return null;
+    }
+  }
 
-      URL.revokeObjectURL(url);
+  function exportToTikZ(nodes, links) {
+    const scale = 0.15;
+    const tikzHeader = "\\begin{tikzpicture}[shorten >=1pt,auto,node distance=2cm,on grid]\n";
+    const tikzFooter = "\\end{tikzpicture}";
+    const lines = [];
+
+    nodes.forEach(node => {
+      const x = (node.x * scale).toFixed(2);
+      const y = (node.y * scale).toFixed(2);
+      const pos = `(${x},${-y})`;
+      const opts = ["state"];
+      if (node.group === "start") opts.push("initial");
+      if (node.group === "accept") opts.push("accepting");
+      lines.push(`\t\\node[${opts.join(", ")}] (q_${node.id}) at ${pos} {\$${node.name}\$};`);
     });
 
-    let nodeIdCounter = 0, linkIdCounter = 0;
-    let nodes = [], links = [];
-    let dragSourceNode = null, interimLink = null;
-    let selectedNode = null;
-    const snapInDistance = 15;
-    const snapOutDistance = 40;
+    lines.push("");
+    lines.push("\t\\path[->]");
 
-    function assignLinkCurvatures(gData, curvatureMinMax = 0.5) {
-      const selfLoopLinks = {};
-      const sameNodesLinks = {};
+    const grouped = {};
+    links.forEach(l => {
+      const src = typeof l.source === "object" ? l.source : nodes.find(n => n.id === l.source);
+      const tgt = typeof l.target === "object" ? l.target : nodes.find(n => n.id === l.target);
+      const key = `${src.name}->${tgt.name}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(l.name || l.label || "λ");
+    });
 
-      gData.links.forEach(link => {
-        const sId = typeof link.source === 'object' ? link.source.id : link.source;
-        const tId = typeof link.target === 'object' ? link.target.id : link.target;
-        link.nodePairId = sId <= tId ? `${sId}_${tId}` : `${tId}_${sId}`;
-        const map = sId === tId ? selfLoopLinks : sameNodesLinks;
-        if (!map[link.nodePairId]) map[link.nodePairId] = [];
-        map[link.nodePairId].push(link);
-      });
+    Object.entries(grouped).forEach(([key, labels]) => {
+      const [srcName, tgtName] = key.split("->");
+      const src = nodes.find(n => n.name === srcName);
+      const tgt = nodes.find(n => n.name === tgtName);
+      const label = labels.join(", ");
+      if (!src || !tgt) return;
+      if (src === tgt)
+        lines.push(`\t(q_${src.id}) edge [loop above] node {${label}} ();`);
+      else
+        lines.push(`\t(q_${src.id}) edge node {${label}} (q_${tgt.id});`);
+    });
 
-      Object.keys(selfLoopLinks).forEach(id => {
-        const links = selfLoopLinks[id];
-        const n = links.length;
-        links.forEach((link, i) => {
-          link.selfIndex = i;
-          link.selfCount = n;
-          link.curvature = n === 1 ? 1 : curvatureMinMax + i * ((1 - curvatureMinMax) / (n - 1));
-        });
-      });
+    lines.push(tikzFooter);
+    return `${tikzHeader}${lines.join("\n")}`;
+  }
 
-      Object.keys(sameNodesLinks).forEach(nodePairId => {
-        const links = sameNodesLinks[nodePairId];
-        const n = links.length;
+  // --- Overlay logic ---
+  const overlay = document.getElementById("overlayPort");
+  const overlayContent = document.getElementById("portContent");
+  const closeOverlay = document.getElementById("closeOverlay");
 
-        if (n === 1) {
-          links[0].curvature = 0;
-          return;
-        }
+  function openOverlay(content) {
+    overlayContent.textContent = content;
+    overlay.style.display = "flex";
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(overlayContent);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
 
-        const lastIndex = n - 1;
-        const delta = (2 * curvatureMinMax) / lastIndex;
-        links.forEach((link, i) => {
-          link.curvature = -curvatureMinMax + i * delta;
-          const lastLink = links[lastIndex];
-          const sId = typeof link.source === 'object' ? link.source.id : link.source;
-          const lastSId = typeof lastLink.source === 'object' ? lastLink.source.id : lastLink.source;
-          if (lastSId !== sId) link.curvature *= -1;
-        });
-      });
+  function closePort() {
+    overlay.style.display = "none";
+    overlayContent.textContent = "";
+  }
+
+  closeOverlay.addEventListener("click", closePort);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closePort();
+  });
+
+  document.getElementById("latexBtn").addEventListener("click", () => {
+    const tikz = exportToTikZ(nodes, links);
+    openOverlay(tikz);
+  });
+
+  document.getElementById("urlBtn").addEventListener("click", () => {
+    const encoded = encodeDFAForURL(nodes, links);
+    const shareURL = `${window.location.origin}${window.location.pathname}?dfa=${encoded}`;
+    openOverlay(shareURL);
+  });
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get("dfa");
+    if (encoded) {
+      const data = decodeDFAFromURL(encoded);
+      if (data) {
+        nodes.length = 0;
+        links.length = 0;
+
+        data.nodes.forEach(n => nodes.push({...n, x: Math.random() * 200, y: Math.random() * 200}));
+        data.links.forEach(l => links.push({
+          ...l,
+          source: nodes.find(n => n.id === l.source),
+          target: nodes.find(n => n.id === l.target)
+        }));
+
+        updateGraphData();
+        console.log("Loaded DFA from URL.");
+      }
     }
+  });
+</script>
 
-    const updateGraphData = () => {
-      assignLinkCurvatures({nodes, links});
-      Graph.graphData({nodes, links});
-    };
+<script>
+  let nodeIdCounter = 0, linkIdCounter = 0;
+  let nodes = [], links = [];
+  let dragSourceNode = null, interimLink = null;
+  let selectedNode = null;
+  const snapInDistance = 15;
+  const snapOutDistance = 40;
 
-    const distance = (node1, node2) => Math.hypot(node1.x - node2.x, node1.y - node2.y);
+  function assignLinkCurvatures(gData, curvatureMinMax = 0.5) {
+    const selfLoopLinks = {};
+    const sameNodesLinks = {};
 
-    const rename = (obj, type) => {
-      let value = prompt('Name this ' + type + ':', obj.name);
-      if (!value) return;
-      obj.name = value;
-      updateGraphData();
-    };
+    gData.links.forEach(link => {
+      const sId = typeof link.source === 'object' ? link.source.id : link.source;
+      const tId = typeof link.target === 'object' ? link.target.id : link.target;
+      link.nodePairId = sId <= tId ? `${sId}_${tId}` : `${tId}_${sId}`;
+      const map = sId === tId ? selfLoopLinks : sameNodesLinks;
+      if (!map[link.nodePairId]) map[link.nodePairId] = [];
+      map[link.nodePairId].push(link);
+    });
 
-    const setInterimLink = (source, target) => {
-      let linkId = linkIdCounter++;
-      interimLink = {id: linkId, source, target, name: 'link_' + linkId, label: 'λ'};
-      links.push(interimLink);
-      updateGraphData();
-    };
+    Object.keys(selfLoopLinks).forEach(id => {
+      const links = selfLoopLinks[id];
+      const n = links.length;
+      links.forEach((link, i) => {
+        link.selfIndex = i;
+        link.selfCount = n;
+        link.curvature = n === 1 ? 1 : curvatureMinMax + i * ((1 - curvatureMinMax) / (n - 1));
+      });
+    });
 
-    const addLink = (source, target) => {
-      if (!source || !target) return;
-      let linkId = linkIdCounter++;
-      links.push({id: linkId, source, target, name: 'link_' + linkId, label: 'λ'});
-      updateGraphData();
-    };
+    Object.keys(sameNodesLinks).forEach(nodePairId => {
+      const links = sameNodesLinks[nodePairId];
+      const n = links.length;
 
-    const removeLink = link => links.splice(links.indexOf(link), 1);
+      if (n === 1) {
+        links[0].curvature = 0;
+        return;
+      }
 
-    const removeInterimLinkWithoutAddingIt = () => {
-      removeLink(interimLink);
+      const lastIndex = n - 1;
+      const delta = (2 * curvatureMinMax) / lastIndex;
+      links.forEach((link, i) => {
+        link.curvature = -curvatureMinMax + i * delta;
+        const lastLink = links[lastIndex];
+        const sId = typeof link.source === 'object' ? link.source.id : link.source;
+        const lastSId = typeof lastLink.source === 'object' ? lastLink.source.id : lastLink.source;
+        if (lastSId !== sId) link.curvature *= -1;
+      });
+    });
+  }
+
+  const updateGraphData = () => {
+    assignLinkCurvatures({nodes, links});
+    Graph.graphData({nodes, links});
+  };
+
+  const distance = (node1, node2) => Math.hypot(node1.x - node2.x, node1.y - node2.y);
+
+  const rename = (obj, type) => {
+    let value = prompt('Name this ' + type + ':', obj.name);
+    if (!value) return;
+    obj.name = value;
+    updateGraphData();
+  };
+
+  const setInterimLink = (source, target) => {
+    let linkId = linkIdCounter++;
+    interimLink = {id: linkId, source, target, name: '', label: 'λ'};
+    links.push(interimLink);
+    updateGraphData();
+  };
+
+  const addLink = (source, target) => {
+    if (!source || !target) return;
+    let linkId = linkIdCounter++;
+    links.push({id: linkId, source, target, name: '', label: 'λ'});
+    updateGraphData();
+  };
+
+  const removeLink = link => links.splice(links.indexOf(link), 1);
+
+  const removeInterimLinkWithoutAddingIt = () => {
+    removeLink(interimLink);
+    interimLink = null;
+    updateGraphData();
+  };
+
+  const removeNode = node => {
+    links.filter(l => l.source === node || l.target === node).forEach(l => removeLink(l));
+    nodes.splice(nodes.indexOf(node), 1);
+  };
+
+  const Graph = new ForceGraph(document.getElementById('graph'))
+    .linkCurvature('curvature')
+    .linkDirectionalArrowLength(6)
+    .linkDirectionalArrowRelPos(1)
+    .onNodeDrag(dragNode => {
+      dragSourceNode = dragNode;
+      for (let node of nodes) {
+        if (dragNode === node) continue;
+        if (!interimLink && distance(dragNode, node) < snapInDistance) setInterimLink(dragSourceNode, node);
+        if (interimLink && node !== interimLink.target && distance(dragNode, node) < snapInDistance) {
+          removeLink(interimLink);
+          setInterimLink(dragSourceNode, node);
+        }
+      }
+      if (interimLink && distance(dragNode, interimLink.target) > snapOutDistance)
+        removeInterimLinkWithoutAddingIt();
+    })
+    .onNodeDragEnd(() => {
+      dragSourceNode = null;
       interimLink = null;
       updateGraphData();
-    };
-
-    const removeNode = node => {
-      links.filter(l => l.source === node || l.target === node).forEach(l => removeLink(l));
-      nodes.splice(nodes.indexOf(node), 1);
-    };
-
-    const Graph = new ForceGraph(document.getElementById('graph'))
-      .linkCurvature('curvature')
-      .linkDirectionalArrowLength(6)
-      .linkDirectionalArrowRelPos(1)
-      .onNodeDrag(dragNode => {
-        dragSourceNode = dragNode;
-        for (let node of nodes) {
-          if (dragNode === node) continue;
-          if (!interimLink && distance(dragNode, node) < snapInDistance) setInterimLink(dragSourceNode, node);
-          if (interimLink && node !== interimLink.target && distance(dragNode, node) < snapInDistance) {
-            removeLink(interimLink);
-            setInterimLink(dragSourceNode, node);
-          }
+    })
+    .nodeColor(node =>
+      node === dragSourceNode ||
+        (interimLink && (node === interimLink.source || node === interimLink.target)) ||
+        node === selectedNode
+        ? 'orange'
+        : null
+    )
+    .linkColor(link => link === interimLink ? 'orange' : '#bbbbbb')
+    .linkLineDash(link => link === interimLink ? [2, 2] : [])
+    .onNodeClick((node, event) => {
+      if (event.shiftKey) {
+        if (!selectedNode) selectedNode = node;
+        else {
+          addLink(selectedNode, node);
+          selectedNode = null;
         }
-        if (interimLink && distance(dragNode, interimLink.target) > snapOutDistance)
-          removeInterimLinkWithoutAddingIt();
-      })
-      .onNodeDragEnd(() => {
-        dragSourceNode = null;
-        interimLink = null;
         updateGraphData();
-      })
-      .nodeColor(node =>
-        node === dragSourceNode ||
-          (interimLink && (node === interimLink.source || node === interimLink.target)) ||
-          node === selectedNode
-          ? 'orange'
-          : null
-      )
-      .linkColor(link => link === interimLink ? 'orange' : '#bbbbbb')
-      .linkLineDash(link => link === interimLink ? [2, 2] : [])
-      .onNodeClick((node, event) => {
-        if (event.shiftKey) {
-          if (!selectedNode) selectedNode = node;
-          else {
-            addLink(selectedNode, node);
-            selectedNode = null;
-          }
-          updateGraphData();
-        } else rename(node, 'node');
-      })
-      .onNodeRightClick(node => removeNode(node))
-      .onLinkClick(link => rename(link, 'link'))
-      .onLinkRightClick(link => removeLink(link))
-      .onBackgroundClick(event => {
-        let coords = Graph.screen2GraphCoords(event.layerX, event.layerY);
-        let nodeId = nodeIdCounter++;
-        nodes.push({id: nodeId, x: coords.x, y: coords.y, name: 'node_' + nodeId});
-        updateGraphData();
-      })
-      .linkCanvasObjectMode(() => 'after')
-      .linkCanvasObject((link, ctx) => {
-        const MAX_FONT_SIZE = 4;
-        const LABEL_NODE_MARGIN = Graph.nodeRelSize() * 1.5;
-        const start = link.source;
-        const end = link.target;
-        if (typeof start !== 'object' || typeof end !== 'object') return;
+      } else rename(node, 'node');
+    })
+    .onNodeRightClick(node => removeNode(node))
+    .onLinkClick(link => rename(link, 'link'))
+    .onLinkRightClick(link => removeLink(link))
+    .onBackgroundClick(event => {
+      let coords = Graph.screen2GraphCoords(event.layerX, event.layerY);
+      let nodeId = nodeIdCounter++;
+      nodes.push({id: nodeId, x: coords.x, y: coords.y, name: 'q_' + nodeId});
+      updateGraphData();
+    })
+    .linkCanvasObjectMode(() => 'after')
+    .linkCanvasObject((link, ctx) => {
+      const MAX_FONT_SIZE = 4;
+      const LABEL_NODE_MARGIN = Graph.nodeRelSize() * 1.5;
+      const start = link.source;
+      const end = link.target;
+      if (typeof start !== 'object' || typeof end !== 'object') return;
 
-        let textPos, textAngle;
-        const relLink = {x: end.x - start.x, y: end.y - start.y};
-        const maxTextLength = Math.hypot(relLink.x, relLink.y) - LABEL_NODE_MARGIN * 2;
-        const isSelfLoop = maxTextLength < 1e-6;
+      let textPos, textAngle;
+      const relLink = {x: end.x - start.x, y: end.y - start.y};
+      const maxTextLength = Math.hypot(relLink.x, relLink.y) - LABEL_NODE_MARGIN * 2;
+      const isSelfLoop = maxTextLength < 1e-6;
 
-        if (isSelfLoop) {
-          const NODE_RADIUS = Graph.nodeRelSize();
-          const SELF_LOOP_BASE_RADIUS = NODE_RADIUS * 2.5;
-          const SELF_LOOP_ANGLE_OFFSET = -Math.PI / 2;
-          const curvature = link.curvature ?? 1;
-          const idx = link.selfIndex ?? 0;
-          const count = link.selfCount ?? 1;
-          const spread = Math.PI / 4;
-          const theta = SELF_LOOP_ANGLE_OFFSET + (idx - (count - 1) / 2) * (spread / Math.max(1, count - 1));
-          const loopRadius = SELF_LOOP_BASE_RADIUS * (0.6 + 0.8 * curvature);
-          textPos = {
-            x: start.x + Math.cos(theta) * (NODE_RADIUS + loopRadius),
-            y: start.y + Math.sin(theta) * (NODE_RADIUS + loopRadius)
-          };
-          textAngle = theta + Math.PI / 2;
-          if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
-          if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
-        } else {
-          textPos = {
-            x: start.x + (end.x - start.x) / 2,
-            y: start.y + (end.y - start.y) / 2
-          };
-          textAngle = Math.atan2(relLink.y, relLink.x);
-          if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
-          if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
-        }
+      if (isSelfLoop) {
+        const NODE_RADIUS = Graph.nodeRelSize();
+        const SELF_LOOP_BASE_RADIUS = NODE_RADIUS * 2.5;
+        const SELF_LOOP_ANGLE_OFFSET = -Math.PI / 2;
+        const curvature = link.curvature ?? 1;
+        const idx = link.selfIndex ?? 0;
+        const count = link.selfCount ?? 1;
+        const spread = Math.PI / 4;
+        const theta = SELF_LOOP_ANGLE_OFFSET + (idx - (count - 1) / 2) * (spread / Math.max(1, count - 1));
+        const loopRadius = SELF_LOOP_BASE_RADIUS * (0.6 + 0.8 * curvature);
+        textPos = {
+          x: start.x + Math.cos(theta) * (NODE_RADIUS + loopRadius),
+          y: start.y + Math.sin(theta) * (NODE_RADIUS + loopRadius)
+        };
+        textAngle = theta + Math.PI / 2;
+        if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
+        if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
+      } else {
+        textPos = {
+          x: start.x + (end.x - start.x) / 2,
+          y: start.y + (end.y - start.y) / 2
+        };
+        textAngle = Math.atan2(relLink.y, relLink.x);
+        if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
+        if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
+      }
 
-        const label = link.name;
-        ctx.font = '1px Sans-Serif';
-        let fontSize = isSelfLoop ? MAX_FONT_SIZE : Math.min(MAX_FONT_SIZE, maxTextLength / ctx.measureText(label).width);
-        ctx.font = `${fontSize}px Sans-Serif`;
-        const textWidth = ctx.measureText(label).width;
-        const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2);
-        ctx.save();
-        ctx.translate(textPos.x, textPos.y);
-        ctx.rotate(textAngle);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillRect(-bckgDimensions[0] / 2, -bckgDimensions[1] / 2, ...bckgDimensions);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'darkgrey';
-        ctx.fillText(label, 0, 0);
-        ctx.restore();
-      });
+      const label = link.name;
+      ctx.font = '1px Sans-Serif';
+      let fontSize = isSelfLoop ? MAX_FONT_SIZE : Math.min(MAX_FONT_SIZE, maxTextLength / ctx.measureText(label).width);
+      ctx.font = `${fontSize}px Sans-Serif`;
+      const textWidth = ctx.measureText(label).width;
+      const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2);
+      ctx.save();
+      ctx.translate(textPos.x, textPos.y);
+      ctx.rotate(textAngle);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(-bckgDimensions[0] / 2, -bckgDimensions[1] / 2, ...bckgDimensions);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'darkgrey';
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    });
 
-    updateGraphData();
-  </script>
-</body>
+  updateGraphData();
+</script>
