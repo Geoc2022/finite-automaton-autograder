@@ -13,162 +13,183 @@
   <div id="graph"></div>
 
   <script>
-    fetch('dfa.json').then(res => res.json()).then(gData => {
+    function decodeDFAFromURL(encoded) {
+      try {
+        const json = atob(encoded.replace(/-/g, "+").replace(/_/g, "/"));
+        return JSON.parse(json);
+      } catch (e) {
+        console.error("Invalid DFA data in URL", e);
+        return null;
+      }
+    }
 
-      function assignLinkCurvatures(gData, curvatureMinMax = 0.5) {
-        const selfLoopLinks = {};
-        const sameNodesLinks = {};
+    function assignLinkCurvatures(gData, curvatureMinMax = 0.5) {
+      const selfLoopLinks = {};
+      const sameNodesLinks = {};
 
-        gData.links.forEach(link => {
-          const s = link.source;
-          const t = link.target;
+      gData.links.forEach(link => {
+        const s = link.source;
+        const t = link.target;
 
-          link.nodePairId = s <= t ? `${s}_${t}` : `${t}_${s}`;
+        link.nodePairId = s <= t ? `${s}_${t}` : `${t}_${s}`;
 
-          const map = s === t ? selfLoopLinks : sameNodesLinks;
-          if (!map[link.nodePairId]) map[link.nodePairId] = [];
-          map[link.nodePairId].push(link);
+        const map = s === t ? selfLoopLinks : sameNodesLinks;
+        if (!map[link.nodePairId]) map[link.nodePairId] = [];
+        map[link.nodePairId].push(link);
+      });
+
+      Object.keys(selfLoopLinks).forEach(id => {
+        const links = selfLoopLinks[id];
+        const n = links.length;
+
+        links.forEach((link, i) => {
+          link.selfIndex = i;
+          link.selfCount = n;
+          if (n === 1) {
+            link.curvature = 1;
+          } else {
+            const delta = (1 - curvatureMinMax) / (n - 1);
+            link.curvature = curvatureMinMax + i * delta;
+          }
+        });
+      });
+
+      Object.keys(sameNodesLinks).forEach(nodePairId => {
+        const links = sameNodesLinks[nodePairId];
+        const n = links.length;
+
+        links.forEach((link, i) => {
+          link.parallelIndex = i;
+          link.parallelCount = n;
         });
 
-        Object.keys(selfLoopLinks).forEach(id => {
-          const links = selfLoopLinks[id];
-          const n = links.length;
+        if (n > 1) {
+          const lastIndex = n - 1;
+          const delta = (2 * curvatureMinMax) / lastIndex;
 
           links.forEach((link, i) => {
-            link.selfIndex = i;
-            link.selfCount = n;
-            if (n === 1) {
-              link.curvature = 1;
-            } else {
-              const delta = (1 - curvatureMinMax) / (n - 1);
-              link.curvature = curvatureMinMax + i * delta;
+            link.curvature = -curvatureMinMax + i * delta;
+            const lastLink = links[lastIndex];
+            if (lastLink.source !== link.source) {
+              link.curvature *= -1;
             }
           });
-        });
+        } else {
+          links[0].curvature = 0;
+        }
+      });
+    }
 
-        Object.keys(sameNodesLinks).forEach(nodePairId => {
-          const links = sameNodesLinks[nodePairId];
-          const n = links.length;
+    const renderGraph = gData => {
+        assignLinkCurvatures(gData);
 
-          links.forEach((link, i) => {
-            link.parallelIndex = i;
-            link.parallelCount = n;
-          });
+        const Graph = new ForceGraph(document.getElementById('graph'))
+            .linkCurvature('curvature')
+            .linkDirectionalArrowLength(6)
+            .linkDirectionalArrowRelPos(1)
+            .graphData(gData)
+            .nodeId('name')
+            .nodeLabel(node => `${node.name} (${node.group})`)
+            .nodeAutoColorBy('group')
+            .linkDirectionalParticles(0)
+            .onNodeClick(node => {
+                Graph.centerAt(node.x, node.y, 1000);
+                Graph.zoom(8, 2000);
+            })
+            .linkCanvasObjectMode(() => 'after')
+            .linkCanvasObject((link, ctx) => {
+                const MAX_FONT_SIZE = 4;
+                const LABEL_NODE_MARGIN = Graph.nodeRelSize() * 1.5;
 
-          if (n > 1) {
-            const lastIndex = n - 1;
-            const delta = (2 * curvatureMinMax) / lastIndex;
+                const start = link.source;
+                const end = link.target;
 
-            links.forEach((link, i) => {
-              link.curvature = -curvatureMinMax + i * delta;
-              const lastLink = links[lastIndex];
-              if (lastLink.source !== link.source) {
-                link.curvature *= -1;
-              }
+                if (typeof start !== 'object' || typeof end !== 'object') return;
+
+                let textPos;
+                let textAngle;
+
+                const relLink = {x: end.x - start.x, y: end.y - start.y};
+
+                const maxTextLength = Math.sqrt(Math.pow(relLink.x, 2) + Math.pow(relLink.y, 2)) - LABEL_NODE_MARGIN * 2;
+
+                const isSelfLoop = maxTextLength < 1e-6;
+
+                if (isSelfLoop) {
+                    const NODE_RADIUS = Graph.nodeRelSize();
+                    const SELF_LOOP_BASE_RADIUS = NODE_RADIUS * 2.5;
+                    const SELF_LOOP_ANGLE_OFFSET = -Math.PI / 2;
+
+                    const curvature = (link.curvature !== undefined && !isNaN(link.curvature)) ? link.curvature : 1;
+                    const idx = link.selfIndex ?? 0;
+                    const count = link.selfCount ?? 1;
+
+                    const spread = Math.PI / 4;
+                    const theta =
+                    SELF_LOOP_ANGLE_OFFSET +
+                    (idx - (count - 1) / 2) * (spread / Math.max(1, count - 1));
+
+                    const loopRadius = SELF_LOOP_BASE_RADIUS * (0.6 + 0.8 * curvature);
+
+                    textPos = {
+                        x: start.x + Math.cos(theta) * (NODE_RADIUS + loopRadius),
+                        y: start.y + Math.sin(theta) * (NODE_RADIUS + loopRadius)
+                    };
+
+                    textAngle = theta + Math.PI / 2;
+
+                    if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
+                    if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
+                }
+                else {
+
+                    textPos = Object.assign(...['x', 'y'].map(c => ({
+                        [c]: start[c] + (end[c] - start[c]) / 2
+                    })));
+
+                    textAngle = Math.atan2(relLink.y, relLink.x);
+                    if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
+                    if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
+                }
+
+                const label = `${link.label}`;
+
+                ctx.font = '1px Sans-Serif';
+                let fontSize;
+                if (isSelfLoop) {
+                    fontSize = MAX_FONT_SIZE
+                } else {
+                    fontSize = Math.min(MAX_FONT_SIZE, maxTextLength / ctx.measureText(label).width);
+                }
+                ctx.font = `${fontSize}px Sans-Serif`;
+                const textWidth = ctx.measureText(label).width;
+                const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2);
+
+                ctx.save();
+                ctx.translate(textPos.x, textPos.y);
+                ctx.rotate(textAngle);
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillRect(- bckgDimensions[0] / 2, - bckgDimensions[1] / 2, ...bckgDimensions);
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'darkgrey';
+                ctx.fillText(label, 0, 0);
+                ctx.restore();
             });
-          } else {
-            links[0].curvature = 0;
-          }
-        });
+    }
+    
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get("dfa");
+
+    if (encoded) {
+      const data = decodeDFAFromURL(encoded);
+      if (data) {
+        renderGraph(data);
       }
-
-      assignLinkCurvatures(gData);
-
-      const Graph = new ForceGraph(document.getElementById('graph'))
-        .linkCurvature('curvature')
-        .linkDirectionalArrowLength(6)
-        .linkDirectionalArrowRelPos(1)
-        .graphData(gData)
-        .nodeId('id')
-        .nodeLabel(node => `${node.name} (${node.group})`)
-        .nodeAutoColorBy('group')
-        .linkDirectionalParticles(0)
-        .onNodeClick(node => {
-          Graph.centerAt(node.x, node.y, 1000);
-          Graph.zoom(8, 2000);
-        })
-        .linkCanvasObjectMode(() => 'after')
-        .linkCanvasObject((link, ctx) => {
-          const MAX_FONT_SIZE = 4;
-          const LABEL_NODE_MARGIN = Graph.nodeRelSize() * 1.5;
-
-          const start = link.source;
-          const end = link.target;
-
-          if (typeof start !== 'object' || typeof end !== 'object') return;
-
-          let textPos;
-          let textAngle;
-
-          const relLink = {x: end.x - start.x, y: end.y - start.y};
-
-          const maxTextLength = Math.sqrt(Math.pow(relLink.x, 2) + Math.pow(relLink.y, 2)) - LABEL_NODE_MARGIN * 2;
-
-          const isSelfLoop = maxTextLength < 1e-6;
-
-          if (isSelfLoop) {
-            const NODE_RADIUS = Graph.nodeRelSize();
-            const SELF_LOOP_BASE_RADIUS = NODE_RADIUS * 2.5;
-            const SELF_LOOP_ANGLE_OFFSET = -Math.PI / 2;
-
-            const curvature = (link.curvature !== undefined && !isNaN(link.curvature)) ? link.curvature : 1;
-            const idx = link.selfIndex ?? 0;
-            const count = link.selfCount ?? 1;
-
-            const spread = Math.PI / 4;
-            const theta =
-              SELF_LOOP_ANGLE_OFFSET +
-              (idx - (count - 1) / 2) * (spread / Math.max(1, count - 1));
-
-            const loopRadius = SELF_LOOP_BASE_RADIUS * (0.6 + 0.8 * curvature);
-
-            textPos = {
-              x: start.x + Math.cos(theta) * (NODE_RADIUS + loopRadius),
-              y: start.y + Math.sin(theta) * (NODE_RADIUS + loopRadius)
-            };
-
-            textAngle = theta + Math.PI / 2;
-
-            if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
-            if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
-          }
-          else {
-
-            textPos = Object.assign(...['x', 'y'].map(c => ({
-              [c]: start[c] + (end[c] - start[c]) / 2
-            })));
-
-            textAngle = Math.atan2(relLink.y, relLink.x);
-            if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
-            if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
-          }
-
-          const label = `${link.label}`;
-
-          ctx.font = '1px Sans-Serif';
-          let fontSize;
-          if (isSelfLoop) {
-            fontSize = MAX_FONT_SIZE
-          } else {
-            fontSize = Math.min(MAX_FONT_SIZE, maxTextLength / ctx.measureText(label).width);
-          }
-          ctx.font = `${fontSize}px Sans-Serif`;
-          const textWidth = ctx.measureText(label).width;
-          const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2);
-
-          ctx.save();
-          ctx.translate(textPos.x, textPos.y);
-          ctx.rotate(textAngle);
-
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-          ctx.fillRect(- bckgDimensions[0] / 2, - bckgDimensions[1] / 2, ...bckgDimensions);
-
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = 'darkgrey';
-          ctx.fillText(label, 0, 0);
-          ctx.restore();
-        })
-    })
+    } else {
+      fetch('dfa.json').then(res => res.json()).then(renderGraph);
+    }
   </script>
 </body>

@@ -122,14 +122,13 @@
   function encodeDFAForURL(nodes, links) {
     const exportData = {
       nodes: nodes.map(n => ({
-        id: n.id,
         name: n.name,
         group: n.group ?? "normal"
       })),
       links: links.map(l => ({
-        source: typeof l.source === "object" ? l.source.id : l.source,
-        target: typeof l.target === "object" ? l.target.id : l.target,
-        label: l.name ?? l.label ?? "a"
+        source: typeof l.source === "object" ? l.source.name : l.source,
+        target: typeof l.target === "object" ? l.target.name : l.target,
+        label: l.label ?? "a"
       }))
     };
 
@@ -153,6 +152,8 @@
     const tikzHeader = "\\begin{tikzpicture}[shorten >=1pt,auto,node distance=2cm,on grid]\n";
     const tikzFooter = "\\end{tikzpicture}";
     const lines = [];
+    const sanitize = name => name.replace(/[^a-zA-Z0-9_]/g, '');
+
 
     nodes.forEach(node => {
       const x = (node.x * scale).toFixed(2);
@@ -161,7 +162,7 @@
       const opts = ["state"];
       if (node.group === "start") opts.push("initial");
       if (node.group === "accept") opts.push("accepting");
-      lines.push(`\t\\node[${opts.join(", ")}] (q_${node.id}) at ${pos} {\$${node.name}\$};`);
+      lines.push(`\t\\node[${opts.join(", ")}] (${sanitize(node.name)}) at ${pos} {\$${node.name}\$};`);
     });
 
     lines.push("");
@@ -169,11 +170,12 @@
 
     const grouped = {};
     links.forEach(l => {
-      const src = typeof l.source === "object" ? l.source : nodes.find(n => n.id === l.source);
-      const tgt = typeof l.target === "object" ? l.target : nodes.find(n => n.id === l.target);
+      const src = typeof l.source === "object" ? l.source : nodes.find(n => n.name === l.source);
+      const tgt = typeof l.target === "object" ? l.target : nodes.find(n => n.name === l.target);
+      if (!src || !tgt) return;
       const key = `${src.name}->${tgt.name}`;
       if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(l.name || l.label || "λ");
+      grouped[key].push(l.label || '');
     });
 
     Object.entries(grouped).forEach(([key, labels]) => {
@@ -183,9 +185,9 @@
       const label = labels.join(", ");
       if (!src || !tgt) return;
       if (src === tgt)
-        lines.push(`\t(q_${src.id}) edge [loop above] node {${label}} ();`);
+        lines.push(`\t(${sanitize(src.name)}) edge [loop above] node {${label}} ();`);
       else
-        lines.push(`\t(q_${src.id}) edge node {${label}} (q_${tgt.id});`);
+        lines.push(`\t(${sanitize(src.name)}) edge node {${label}} (${sanitize(tgt.name)});`);
     });
 
     lines.push(tikzFooter);
@@ -240,8 +242,8 @@
         data.nodes.forEach(n => nodes.push({...n, x: Math.random() * 200, y: Math.random() * 200}));
         data.links.forEach(l => links.push({
           ...l,
-          source: nodes.find(n => n.id === l.source),
-          target: nodes.find(n => n.id === l.target)
+          source: l.source,
+          target: l.target
         }));
 
         updateGraphData();
@@ -252,7 +254,7 @@
 </script>
 
 <script>
-  let nodeIdCounter = 0, linkIdCounter = 0;
+  let linkIdCounter = 0;
   let nodes = [], links = [];
   let dragSourceNode = null, interimLink = null;
   let selectedNode = null;
@@ -264,8 +266,8 @@
     const sameNodesLinks = {};
 
     gData.links.forEach(link => {
-      const sId = typeof link.source === 'object' ? link.source.id : link.source;
-      const tId = typeof link.target === 'object' ? link.target.id : link.target;
+      const sId = typeof link.source === 'object' ? link.source.name : link.source;
+      const tId = typeof link.target === 'object' ? link.target.name : link.target;
       link.nodePairId = sId <= tId ? `${sId}_${tId}` : `${tId}_${sId}`;
       const map = sId === tId ? selfLoopLinks : sameNodesLinks;
       if (!map[link.nodePairId]) map[link.nodePairId] = [];
@@ -296,8 +298,8 @@
       links.forEach((link, i) => {
         link.curvature = -curvatureMinMax + i * delta;
         const lastLink = links[lastIndex];
-        const sId = typeof link.source === 'object' ? link.source.id : link.source;
-        const lastSId = typeof lastLink.source === 'object' ? lastLink.source.id : lastLink.source;
+        const sId = typeof link.source === 'object' ? link.source.name : link.source;
+        const lastSId = typeof lastLink.source === 'object' ? lastLink.source.name : lastLink.source;
         if (lastSId !== sId) link.curvature *= -1;
       });
     });
@@ -311,15 +313,24 @@
   const distance = (node1, node2) => Math.hypot(node1.x - node2.x, node1.y - node2.y);
 
   const rename = (obj, type) => {
-    let value = prompt('Name this ' + type + ':', obj.name);
+    let currentValue = (type === 'link') ? obj.label : obj.name;
+    let value = prompt('Name this ' + type + ':', currentValue);
     if (!value) return;
-    obj.name = value;
+    if (type === 'node') {
+      if (nodes.some(n => n.name === value && n !== obj)) {
+        alert('A node with this name already exists.');
+        return;
+      }
+      obj.name = value;
+    } else {
+      obj.label = value;
+    }
     updateGraphData();
   };
 
   const setInterimLink = (source, target) => {
     let linkId = linkIdCounter++;
-    interimLink = {id: linkId, source, target, name: '', label: 'λ'};
+    interimLink = {id: linkId, source, target, label: ''};
     links.push(interimLink);
     updateGraphData();
   };
@@ -327,7 +338,7 @@
   const addLink = (source, target) => {
     if (!source || !target) return;
     let linkId = linkIdCounter++;
-    links.push({id: linkId, source, target, name: '', label: 'λ'});
+    links.push({id: linkId, source, target, label: ''});
     updateGraphData();
   };
 
@@ -345,6 +356,7 @@
   };
 
   const Graph = new ForceGraph(document.getElementById('graph'))
+    .nodeId('name')
     .linkCurvature('curvature')
     .linkDirectionalArrowLength(6)
     .linkDirectionalArrowRelPos(1)
@@ -390,8 +402,13 @@
     .onLinkRightClick(link => removeLink(link))
     .onBackgroundClick(event => {
       let coords = Graph.screen2GraphCoords(event.layerX, event.layerY);
-      let nodeId = nodeIdCounter++;
-      nodes.push({id: nodeId, x: coords.x, y: coords.y, name: 'q_' + nodeId});
+      let i = nodes.length;
+      let name = 'q_' + i;
+      while (nodes.some(n => n.name === name)) {
+        i++;
+        name = 'q_' + i;
+      }
+      nodes.push({x: coords.x, y: coords.y, name: name});
       updateGraphData();
     })
     .linkCanvasObjectMode(() => 'after')
@@ -434,7 +451,7 @@
         if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
       }
 
-      const label = link.name;
+      const label = link.label;
       ctx.font = '1px Sans-Serif';
       let fontSize = isSelfLoop ? MAX_FONT_SIZE : Math.min(MAX_FONT_SIZE, maxTextLength / ctx.measureText(label).width);
       ctx.font = `${fontSize}px Sans-Serif`;

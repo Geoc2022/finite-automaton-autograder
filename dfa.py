@@ -20,12 +20,9 @@ class DFA:
         return current_state in self.accept_states
 
     def to_json(self, path="dfa.json"):
-        state_index = {s: i for i, s in enumerate(self.states)}
-
         nodes = [
             {
                 "name": s,
-                "id": state_index[s],
                 "group": (
                     "start" if s == self.start_state else
                     "accept" if s in self.accept_states else
@@ -39,10 +36,8 @@ class DFA:
         for src, transitions in self.transitions.items():
             for symbol, dst in transitions.items():
                 links.append({
-                    "source_name": src,
-                    "target_name": dst,
-                    "source": state_index[src],
-                    "target": state_index[dst],
+                    "source": src,
+                    "target": dst,
                     "label": symbol
                 })
 
@@ -72,8 +67,8 @@ class DFA:
         alphabet = set()
 
         for link in data["links"]:
-            src = link["source_name"]
-            dst = link["target_name"]
+            src = link["source"]
+            dst = link["target"]
             symbol = link.get("label", "a")
             alphabet.add(symbol)
             if src not in transitions:
