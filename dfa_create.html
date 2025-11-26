@@ -359,9 +359,12 @@
   };
 
   window.addEventListener('keydown', function (event) {
-    if (!selectedNode) return;
-
-    if (event.key === 'a') {
+    if (event.key === 'Escape') {
+      selectedNode = null;
+      nodeForLink = null;
+      updateGraphData();
+    } else if (event.key === 'a') {
+      if (!selectedNode) return;
       if (selectedNode.group === 'accept') {
         selectedNode.group = 'normal';
         selectedNode = null;
@@ -372,6 +375,7 @@
       nodeForLink = null;
       updateGraphData();
     } else if (event.key === 's') {
+      if (!selectedNode) return;
       const currentStartNode = nodes.find(n => n.group === 'start');
       if (currentStartNode && currentStartNode !== selectedNode) {
         alert('There can only be one start node.');
