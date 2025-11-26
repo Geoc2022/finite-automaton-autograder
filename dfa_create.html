@@ -152,6 +152,8 @@
 
   function exportToTikZ(nodes, links) {
     const scale = 0.15;
+    const link = `% ${window.location.origin}${window.location.pathname}?dfa=${encodeDFAForURL(nodes, links)}`
+    const prelude = "% \\usetikzlibrary{automata, positioning}\n" + link + "\n";
     const tikzHeader = "\\begin{center}\n\\begin{tikzpicture}[shorten >=1pt,auto,node distance=2cm,on grid]\n";
     const tikzFooter = "\\end{tikzpicture}\n\\end{center}";
     const lines = [];
@@ -194,7 +196,7 @@
     lines.push(';')
 
     lines.push(tikzFooter);
-    return `${tikzHeader}${lines.join("\n")}`;
+    return `${prelude}${tikzHeader}${lines.join("\n")}`;
   }
 
   // --- Overlay logic ---
