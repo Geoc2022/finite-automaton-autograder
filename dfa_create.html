@@ -2,6 +2,7 @@
   <style>
     body {
       margin: 0;
+      background-color: #eceff4;
     }
   </style>
   <script src="//cdn.jsdelivr.net/npm/force-graph"></script>
@@ -10,9 +11,9 @@
 <style>
   /* Based on quiver */
   :root {
-    --ui-black: #000;
-    --ui-white: #eee;
-    --ui-border: #666;
+    --ui-black: #2e3440;
+    --ui-white: #eceff4;
+    --ui-border: #4c566a;
   }
 
   .global-panel {
@@ -70,9 +71,9 @@
   }
 
   .port-content {
-    background: #111;
-    color: #eee;
-    border: 1px solid #444;
+    background: var(--ui-black);
+    color: var(--ui-white);
+    border: 1px solid var(--ui-border);
     border-radius: 8px;
     padding: 16px;
     max-width: 90%;
@@ -85,8 +86,8 @@
   .port-close {
     margin-top: 16px;
     background: transparent;
-    border: 1px solid #777;
-    color: #fff;
+    border: 1px solid var(--ui-border);
+    color: var(--ui-white);
     border-radius: 6px;
     padding: 6px 12px;
     cursor: pointer;
@@ -114,6 +115,8 @@
     <br>
     <b>Rename</b> node or link by clicking on it,
     <b>Remove</b> node or link by shift-clicking on it, <br>
+    <b>Select</b> a node by right-clicking on it. Once selected, press 'a' to toggle accepting state, or 's' to toggle
+    start state.
   </div>
   <div id="graph"></div>
 </body>
@@ -149,8 +152,8 @@
 
   function exportToTikZ(nodes, links) {
     const scale = 0.15;
-    const tikzHeader = "\\begin{tikzpicture}[shorten >=1pt,auto,node distance=2cm,on grid]\n";
-    const tikzFooter = "\\end{tikzpicture}";
+    const tikzHeader = "\\begin{center}\n\\begin{tikzpicture}[shorten >=1pt,auto,node distance=2cm,on grid]\n";
+    const tikzFooter = "\\end{tikzpicture}\n\\end{center}";
     const lines = [];
     const sanitize = name => name.replace(/[^a-zA-Z0-9_]/g, '');
 
@@ -175,20 +178,20 @@
       grouped[key].push(l.label || '');
     });
 
+    lines.push("");
+    lines.push("\t\\path[->]");
     Object.entries(grouped).forEach(([key, labels]) => {
-      lines.push("");
-      lines.push("\t\\path[->]");
-
       const [srcName, tgtName] = key.split("->");
       const src = nodes.find(n => n.name === srcName);
       const tgt = nodes.find(n => n.name === tgtName);
       const label = labels.join(", ");
       if (!src || !tgt) return;
       if (src === tgt)
-        lines.push(`\t(${sanitize(src.name)}) edge [loop above] node {${label}} ();`);
+        lines.push(`\t(${sanitize(src.name)}) edge [loop above] node {${label}} ()`);
       else
-        lines.push(`\t(${sanitize(src.name)}) edge node {${label}} (${sanitize(tgt.name)});`);
+        lines.push(`\t(${sanitize(src.name)}) edge node {${label}} (${sanitize(tgt.name)})`);
     });
+    lines.push(';')
 
     lines.push(tikzFooter);
     return `${tikzHeader}${lines.join("\n")}`;
@@ -257,7 +260,7 @@
   let linkIdCounter = 0;
   let nodes = [], links = [];
   let dragSourceNode = null, interimLink = null;
-  let selectedNode = null;
+  let selectedNode = null, nodeForLink = null;
   const snapInDistance = 15;
   const snapOutDistance = 40;
 
@@ -355,6 +358,36 @@
     nodes.splice(nodes.indexOf(node), 1);
   };
 
+  window.addEventListener('keydown', function (event) {
+    if (!selectedNode) return;
+
+    if (event.key === 'a') {
+      if (selectedNode.group === 'accept') {
+        selectedNode.group = 'normal';
+        selectedNode = null;
+      } else {
+        selectedNode.group = 'accept';
+      }
+      selectedNode = null;
+      nodeForLink = null;
+      updateGraphData();
+    } else if (event.key === 's') {
+      const currentStartNode = nodes.find(n => n.group === 'start');
+      if (currentStartNode && currentStartNode !== selectedNode) {
+        alert('There can only be one start node.');
+        return;
+      }
+      if (selectedNode.group === 'start') {
+        selectedNode.group = 'normal';
+      } else {
+        selectedNode.group = 'start';
+      }
+      selectedNode = null;
+      nodeForLink = null;
+      updateGraphData();
+    }
+  });
+
   const Graph = new ForceGraph(document.getElementById('graph'))
     .nodeId('name')
     .linkCurvature('curvature')
@@ -378,14 +411,14 @@
       interimLink = null;
       updateGraphData();
     })
-    .nodeColor(node =>
-      node === dragSourceNode ||
-        (interimLink && (node === interimLink.source || node === interimLink.target)) ||
-        node === selectedNode
-        ? 'orange'
-        : null
-    )
-    .linkColor(link => link === interimLink ? 'orange' : '#bbbbbb')
+    .nodeColor(node => {
+      if (node === selectedNode) return '#ebcb8b';
+      if (node.group === 'start') return '#8fbcbb';
+      if (node.group === 'accept') return '#88c0d0';
+      if (node === dragSourceNode || (interimLink && (node === interimLink.source || node === interimLink.target))) return '#ebcb8b';
+      return '#81a1c1';
+    })
+    .linkColor(link => link === interimLink ? '#ebcb8b' : '#81a1c1')
     .linkLineDash(link => link === interimLink ? [2, 2] : [])
     .onNodeClick((node, event) => {
       if (event.shiftKey) {
@@ -393,24 +426,34 @@
       } else rename(node, 'node');
     })
     .onNodeRightClick(node => {
-      if (!selectedNode) selectedNode = node;
-      else {
-        addLink(selectedNode, node);
+      if (nodeForLink) {
+        addLink(nodeForLink, node);
         selectedNode = null;
+        nodeForLink = null;
+      } else {
+        if (selectedNode === node) {
+          selectedNode = null;
+          nodeForLink = null;
+        } else {
+          selectedNode = node;
+          nodeForLink = node;
+        }
       }
       updateGraphData();
     })
     .onLinkClick((link, event) => {
-        if (event.shiftKey) {
-            removeLink(link)
-            updateGraphData();
-        }
-        else {
-            rename(link, 'link')
-        }
+      if (event.shiftKey) {
+        removeLink(link)
+        updateGraphData();
+      }
+      else {
+        rename(link, 'link')
+      }
     })
-    .onLinkRightClick(link => {})
+    .onLinkRightClick(link => { })
     .onBackgroundClick(event => {
+      selectedNode = null;
+      nodeForLink = null;
       let coords = Graph.screen2GraphCoords(event.layerX, event.layerY);
       let i = nodes.length;
       let name = 'q_' + i;
@@ -470,11 +513,11 @@
       ctx.save();
       ctx.translate(textPos.x, textPos.y);
       ctx.rotate(textAngle);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillStyle = '#eceff4a0';
       ctx.fillRect(-bckgDimensions[0] / 2, -bckgDimensions[1] / 2, ...bckgDimensions);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'darkgrey';
+      ctx.fillStyle = '#5e81aca0';
       ctx.fillText(label, 0, 0);
       ctx.restore();
     });
