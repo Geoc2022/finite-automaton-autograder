@@ -165,9 +165,6 @@
       lines.push(`\t\\node[${opts.join(", ")}] (${sanitize(node.name)}) at ${pos} {\$${node.name}\$};`);
     });
 
-    lines.push("");
-    lines.push("\t\\path[->]");
-
     const grouped = {};
     links.forEach(l => {
       const src = typeof l.source === "object" ? l.source : nodes.find(n => n.name === l.source);
@@ -179,6 +176,9 @@
     });
 
     Object.entries(grouped).forEach(([key, labels]) => {
+      lines.push("");
+      lines.push("\t\\path[->]");
+
       const [srcName, tgtName] = key.split("->");
       const src = nodes.find(n => n.name === srcName);
       const tgt = nodes.find(n => n.name === tgtName);
