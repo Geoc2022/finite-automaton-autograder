@@ -110,10 +110,10 @@
   <br />
   <div style="text-align: center; color: var(--ui-border); background-color: transparent;">
     <b>New node:</b> click on the canvas,
-    <b>New link:</b> Shift+click source node and then click target node
+    <b>New link:</b> right-click source node and then right-click target node
     <br>
     <b>Rename</b> node or link by clicking on it,
-    <b>Remove</b> node or link by right-clicking on it, <br>
+    <b>Remove</b> node or link by shift-clicking on it, <br>
   </div>
   <div id="graph"></div>
 </body>
@@ -389,17 +389,27 @@
     .linkLineDash(link => link === interimLink ? [2, 2] : [])
     .onNodeClick((node, event) => {
       if (event.shiftKey) {
-        if (!selectedNode) selectedNode = node;
-        else {
-          addLink(selectedNode, node);
-          selectedNode = null;
-        }
-        updateGraphData();
+        removeNode(node);
       } else rename(node, 'node');
     })
-    .onNodeRightClick(node => removeNode(node))
-    .onLinkClick(link => rename(link, 'link'))
-    .onLinkRightClick(link => removeLink(link))
+    .onNodeRightClick(node => {
+      if (!selectedNode) selectedNode = node;
+      else {
+        addLink(selectedNode, node);
+        selectedNode = null;
+      }
+      updateGraphData();
+    })
+    .onLinkClick((link, event) => {
+        if (event.shiftKey) {
+            removeLink(link)
+            updateGraphData();
+        }
+        else {
+            rename(link, 'link')
+        }
+    })
+    .onLinkRightClick(link => {})
     .onBackgroundClick(event => {
       let coords = Graph.screen2GraphCoords(event.layerX, event.layerY);
       let i = nodes.length;
