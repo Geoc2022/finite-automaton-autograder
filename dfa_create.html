@@ -392,6 +392,34 @@
     }
   });
 
+  function getQuadraticBezierPoint(p0, p1, p2, t) {
+    const mt = 1 - t;
+    return {
+      x: mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x,
+      y: mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y,
+    };
+  }
+
+  function getControlPoint(source, target, curvature, lineLength) {
+    const midX = (source.x + target.x) / 2;
+    const midY = (source.y + target.y) / 2;
+
+    const dx = target.x - source.x;
+    const dy = target.y - source.y;
+
+    const perpDx = -dy;
+    const perpDy = dx;
+
+    const length = Math.sqrt(perpDx * perpDx + perpDy * perpDy);
+    const normalizedPerpDx = perpDx / length;
+    const normalizedPerpDy = perpDy / length;
+
+    const controlPointX = midX + normalizedPerpDx * curvature * lineLength * 0.5;
+    const controlPointY = midY + normalizedPerpDy * curvature * lineLength * 0.5;
+
+    return {x: controlPointX, y: controlPointY};
+  }
+
   const Graph = new ForceGraph(document.getElementById('graph'))
     .nodeId('name')
     .linkCurvature('curvature')
@@ -469,8 +497,8 @@
       updateGraphData();
     })
     .linkCanvasObjectMode(() => 'after')
-    .linkCanvasObject((link, ctx) => {
-      const MAX_FONT_SIZE = 4;
+    .linkCanvasObject((link, ctx, globalScale) => {
+      const MAX_FONT_SIZE = 18;
       const LABEL_NODE_MARGIN = Graph.nodeRelSize() * 1.5;
       const start = link.source;
       const end = link.target;
@@ -478,14 +506,15 @@
 
       let textPos, textAngle;
       const relLink = {x: end.x - start.x, y: end.y - start.y};
-      const maxTextLength = Math.hypot(relLink.x, relLink.y) - LABEL_NODE_MARGIN * 2;
-      const isSelfLoop = maxTextLength < 1e-6;
+      const lineLength = Math.hypot(relLink.x, relLink.y);
+      const isSelfLoop = lineLength < 1e-6;
+
+      const curvature = link.curvature || 0;
 
       if (isSelfLoop) {
         const NODE_RADIUS = Graph.nodeRelSize();
         const SELF_LOOP_BASE_RADIUS = NODE_RADIUS * 2.5;
         const SELF_LOOP_ANGLE_OFFSET = -Math.PI / 2;
-        const curvature = link.curvature ?? 1;
         const idx = link.selfIndex ?? 0;
         const count = link.selfCount ?? 1;
         const spread = Math.PI / 4;
@@ -498,7 +527,18 @@
         textAngle = theta + Math.PI / 2;
         if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
         if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
+      } else if (curvature !== 0) {
+        // Curved link
+        const controlPoint = getControlPoint(start, end, - 1.5 * curvature, lineLength);
+        textPos = getQuadraticBezierPoint(start, controlPoint, end, 0.5);
+
+        // Text rotation
+        const tangentX = 2 * (0.5 * (controlPoint.x - start.x) + 0.5 * (end.x - controlPoint.x));
+        const tangentY = 2 * (0.5 * (controlPoint.y - start.y) + 0.5 * (end.y - controlPoint.y));
+        textAngle = Math.atan2(- tangentY, - tangentX);
+
       } else {
+        // Straight link
         textPos = {
           x: start.x + (end.x - start.x) / 2,
           y: start.y + (end.y - start.y) / 2
@@ -509,8 +549,7 @@
       }
 
       const label = link.label;
-      ctx.font = '1px Sans-Serif';
-      let fontSize = isSelfLoop ? MAX_FONT_SIZE : Math.min(MAX_FONT_SIZE, maxTextLength / ctx.measureText(label).width);
+      const fontSize = MAX_FONT_SIZE / globalScale; // Scale font size with zoom
       ctx.font = `${fontSize}px Sans-Serif`;
       const textWidth = ctx.measureText(label).width;
       const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2);
