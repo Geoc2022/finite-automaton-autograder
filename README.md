@@ -1,10 +1,12 @@
 # Finite Automaton Autograder
 
 Prototype of a tool for 1010 students to use for creating and testing their FA.
+Repo: [https://github.com/Geoc2022/finite-automaton-autograder](https://github.com/Geoc2022/finite-automaton-autograder)
 
 Currently there is only support for DFAs.
 
 You can try out creating a DFA here: [https://george.chemmala.com/finite-automaton-autograder/dfa_create](https://george.chemmala.com/finite-automaton-autograder/dfa_create)
+
 
 ## Creating a DFA and Converting it to a Python Object
 
