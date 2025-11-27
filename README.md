@@ -101,17 +101,11 @@ Test 4: Passed
 
 ## TODO
 
-- Add everything (e.g. group names) in `dfa_render.html` to `dfa_create.html` s.t. `create` \supset `render`
-
 - Add LaTeX support to renders (e.g Greek symbols)
-
-- Make `dfa_create.html` use standard notation
 
 - Add a test file which would do the autograding
 
 - Add a FA library to hold the reused rendering functions
-
-- Export to LaTeX Tikz Diagrams (?)
 
 ## License
 
