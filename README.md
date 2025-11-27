@@ -4,16 +4,7 @@ Prototype of a tool for 1010 students to use for creating and testing their FA.
 
 Currently there is only support for DFAs.
 
-## Rendering a Python Object DFA
-
-1. Run `python dfa.py` to create a DFA object as an example in the main function
-2. Run a local server using `python -m http.server` in the terminal in this directory
-3. Open your browser and go to `http://localhost:8000/dfa_render.html`
-
-This should be using the dfa.json file in the directory created by `dfa.py`.
-You can edit the JSON file to get a different result or create your own DFA object in python and save it as a JSON file
-
-![Render](./img/render.png)
+You can try out creating a DFA here: https://george.chemmala.com/finite-automaton-autograder/dfa_create
 
 ## Creating a DFA and Converting it to a Python Object
 
@@ -24,6 +15,18 @@ You can edit the JSON file to get a different result or create your own DFA obje
 5. Run `python dfa.py` and modify the main function to load your JSON file instead of dfa.json
 
 ![Create](./img/create.png)
+
+
+## Rendering a Python Object DFA
+
+1. Run `python dfa.py` to create a DFA object as an example in the main function
+2. Run a local server using `python -m http.server` in the terminal in this directory
+3. Open your browser and go to `http://localhost:8000/dfa_render.html`
+
+This should be using the dfa.json file in the directory created by `dfa.py`.
+You can edit the JSON file to get a different result or create your own DFA object in python and save it as a JSON file
+
+![Render](./img/render.png)
 
 
 ## Running and Testing a DFA
