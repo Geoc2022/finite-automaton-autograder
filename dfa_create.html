@@ -53,7 +53,16 @@
   }
 
   .panel-button:hover {
-    background: hsla(0, 0%, 20%, 0.9);
+    background: #3b4252;
+  }
+
+  .panel-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .panel-button:disabled:hover {
+    background: transparent;
   }
 
   .port {
@@ -100,6 +109,9 @@
 
 <!-- Panel -->
 <div class="global-panel">
+  <button class="panel-button" id="undoBtn">Undo</button>
+  <button class="panel-button" id="redoBtn">Redo</button>
+  <div style="border-left: 1px solid var(--ui-border); height: 24px; margin: 0 6px;"></div>
   Export:
   <button class="panel-button" id="urlBtn">URL</button>
   <button class="panel-button" id="jsonBtn">JSON</button>
@@ -258,38 +270,37 @@
     openOverlay(tikz);
   });
 
+  document.getElementById("undoBtn").addEventListener("click", () => history.back());
+  document.getElementById("redoBtn").addEventListener("click", () => history.forward());
+
   document.getElementById("urlBtn").addEventListener("click", () => {
     const encoded = encodeDFAForURL(nodes, links);
     const newURL = `${window.location.origin}${window.location.pathname}?dfa=${encoded}`;
-    history.pushState({path: newURL}, '', newURL);
-    openOverlay(newURL);
+    navigator.clipboard.writeText(newURL).then(() => {
+      openOverlay(newURL);
+    }, () => {
+      openOverlay('Failed to copy URL to clipboard\n\n' + newURL);
+    });
   });
 
   document.getElementById("jsonBtn").addEventListener("click", () => {
     exportToJson(nodes, links);
   });
 
-  window.addEventListener("DOMContentLoaded", () => {
-    const params = new URLSearchParams(window.location.search);
-    const encoded = params.get("dfa");
-    if (encoded) {
-      const data = decodeDFAFromURL(encoded);
-      if (data) {
-        nodes.length = 0;
-        links.length = 0;
-
-        data.nodes.forEach(n => nodes.push({...n, x: Math.random() * 200, y: Math.random() * 200}));
-        data.links.forEach(l => links.push({
-          ...l,
-          source: l.source,
-          target: l.target
-        }));
-
-        updateGraphData();
-        console.log("Loaded DFA from URL.");
-      }
+  function loadDfaData(data) {
+    nodes.length = 0;
+    links.length = 0;
+    if (data) {
+      (data.nodes || []).forEach(n => nodes.push(n));
+      (data.links || []).forEach(l => links.push({
+        ...l,
+        source: l.source,
+        target: l.target
+      }));
+      console.log("Loaded DFA from data.");
     }
-  });
+    updateGraphVisuals();
+  }
 </script>
 
 <script>
@@ -344,7 +355,62 @@
     });
   }
 
-  const updateGraphData = () => {
+  let historyIndex = 0;
+  let historyLength = 1;
+
+  function updateButtonStates() {
+    document.getElementById('undoBtn').disabled = historyIndex <= 0;
+    document.getElementById('redoBtn').disabled = historyIndex >= historyLength - 1;
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get("dfa");
+    if (encoded) {
+      const data = decodeDFAFromURL(encoded);
+      loadDfaData(data);
+      history.replaceState({dfa: encoded, index: 0}, '', window.location.href);
+    } else {
+      // Set an initial empty state.
+      history.replaceState({dfa: '', index: 0}, '', window.location.pathname);
+      commitChange(); // This will create the first real history entry.
+    }
+    updateButtonStates();
+  });
+
+  window.addEventListener('popstate', (event) => {
+    historyIndex = (event.state && event.state.index) || 0;
+    updateButtonStates();
+
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get("dfa");
+    const data = decodeDFAFromURL(encoded || '');
+    loadDfaData(data);
+  });
+
+  let historyUpdateTimeout;
+  function updateHistory() {
+    clearTimeout(historyUpdateTimeout);
+    const linksForHistory = links.filter(l => l !== interimLink);
+    const encoded = encodeDFAForURL(nodes, linksForHistory);
+    const currentUrl = new URL(window.location.href);
+    const currentDfa = currentUrl.searchParams.get('dfa');
+    if (encoded !== currentDfa) {
+      historyIndex++;
+      historyLength = historyIndex + 1;
+      currentUrl.searchParams.set('dfa', encoded);
+      history.pushState({dfa: encoded, index: historyIndex}, '', currentUrl.href);
+      updateButtonStates();
+    }
+  }
+
+  const commitChange = () => {
+    updateGraphVisuals();
+    clearTimeout(historyUpdateTimeout);
+    historyUpdateTimeout = setTimeout(updateHistory, 300);
+  }
+
+  const updateGraphVisuals = () => {
     assignLinkCurvatures({nodes, links});
     Graph.graphData({nodes, links});
   };
@@ -364,52 +430,63 @@
     } else {
       obj.label = value;
     }
-    updateGraphData();
+    commitChange();
   };
 
   const setInterimLink = (source, target) => {
     let linkId = linkIdCounter++;
     interimLink = {id: linkId, source, target, label: ''};
     links.push(interimLink);
-    updateGraphData();
+    updateGraphVisuals();
   };
 
   const addLink = (source, target) => {
     if (!source || !target) return;
     let linkId = linkIdCounter++;
     links.push({id: linkId, source, target, label: ''});
-    updateGraphData();
+    commitChange();
   };
 
-  const removeLink = link => links.splice(links.indexOf(link), 1);
+  const removeLink = link => {
+    const index = links.indexOf(link);
+    if (index > -1) {
+      links.splice(index, 1);
+    }
+  };
 
   const removeInterimLinkWithoutAddingIt = () => {
-    removeLink(interimLink);
+    if (interimLink) removeLink(interimLink);
     interimLink = null;
-    updateGraphData();
+    updateGraphVisuals();
   };
 
   const removeNode = node => {
-    links.filter(l => l.source === node || l.target === node).forEach(l => removeLink(l));
+    links = links.filter(l => l.source !== node && l.target !== node);
     nodes.splice(nodes.indexOf(node), 1);
   };
 
   window.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape') {
+    if (event.metaKey && event.key === 'z') {
+      event.preventDefault();
+      if (event.shiftKey) {
+        history.forward();
+      } else {
+        history.back();
+      }
+    } else if (event.key === 'Escape') {
       selectedNode = null;
       nodeForLink = null;
-      updateGraphData();
+      updateGraphVisuals();
     } else if (event.key === 'a') {
       if (!selectedNode) return;
       if (selectedNode.group === 'accept') {
         selectedNode.group = 'normal';
-        selectedNode = null;
       } else {
         selectedNode.group = 'accept';
       }
       selectedNode = null;
       nodeForLink = null;
-      updateGraphData();
+      commitChange();
     } else if (event.key === 's') {
       if (!selectedNode) return;
       const currentStartNode = nodes.find(n => n.group === 'start');
@@ -424,7 +501,7 @@
       }
       selectedNode = null;
       nodeForLink = null;
-      updateGraphData();
+      commitChange();
     }
   });
 
@@ -467,7 +544,7 @@
         if (dragNode === node) continue;
         if (!interimLink && distance(dragNode, node) < snapInDistance) setInterimLink(dragSourceNode, node);
         if (interimLink && node !== interimLink.target && distance(dragNode, node) < snapInDistance) {
-          removeLink(interimLink);
+          if (interimLink) removeLink(interimLink);
           setInterimLink(dragSourceNode, node);
         }
       }
@@ -476,8 +553,10 @@
     })
     .onNodeDragEnd(() => {
       dragSourceNode = null;
-      interimLink = null;
-      updateGraphData();
+      if (interimLink) {
+        interimLink = null;
+      }
+      commitChange();
     })
     .nodeColor(node => {
       if (node === selectedNode) return '#ebcb8b';
@@ -491,6 +570,7 @@
     .onNodeClick((node, event) => {
       if (event.shiftKey) {
         removeNode(node);
+        commitChange();
       } else rename(node, 'node');
     })
     .onNodeRightClick(node => {
@@ -507,12 +587,12 @@
           nodeForLink = node;
         }
       }
-      updateGraphData();
+      updateGraphVisuals();
     })
     .onLinkClick((link, event) => {
       if (event.shiftKey) {
         removeLink(link)
-        updateGraphData();
+        commitChange();
       }
       else {
         rename(link, 'link')
@@ -530,7 +610,7 @@
         name = 'q_' + i;
       }
       nodes.push({x: coords.x, y: coords.y, name: name});
-      updateGraphData();
+      commitChange();
     })
     .linkCanvasObjectMode(() => 'after')
     .linkCanvasObject((link, ctx, globalScale) => {
@@ -601,5 +681,5 @@
       ctx.restore();
     });
 
-  updateGraphData();
+  commitChange();
 </script>
