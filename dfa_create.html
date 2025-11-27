@@ -105,6 +105,33 @@
     padding: 6px 12px;
     cursor: pointer;
   }
+
+  .toolbar {
+    position: fixed;
+    height: 60px;
+    left: 50%;
+    top: 16px;
+    transform: translateX(-50%);
+    z-index: 90;
+    background: #2e344000;
+    border-radius: 8px;
+    color: var(--ui-border);
+    white-space: nowrap;
+    transition: opacity .3s;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8 20px;
+    font-family: sans-serif;
+    line-height: 1.4;
+    font-size: 14px;
+  }
+
+  .toolbar.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
 </style>
 
 <!-- Panel -->
@@ -125,15 +152,14 @@
 </div>
 
 <body>
-  <br />
-  <div style="text-align: center; color: var(--ui-border); background-color: transparent;">
-    <b>New node:</b> click on the canvas,
-    <b>New link:</b> right-click source node and then right-click target node
-    <br>
-    <b>Rename</b> node or link by clicking on it,
-    <b>Remove</b> node or link by shift-clicking on it, <br>
-    <b>Select</b> a node by right-clicking on it. Once selected, press 'a' to toggle accepting state, or 's' to toggle
-    start state.
+  <div id="instructionsToolbar" class="toolbar">
+    <div style="text-align: center;">
+      <b>New node:</b> click canvas | <b>New link:</b> right-click source and target node
+      <br>
+      <b>Rename</b> click node or link | <b>Remove</b> shift-click node or link
+      <br>
+      <b>Select</b> right-click, use 'a' to toggle accepting or 's' to toggle start
+    </div>
   </div>
   <div id="graph"></div>
 </body>
@@ -371,9 +397,8 @@
       loadDfaData(data);
       history.replaceState({dfa: encoded, index: 0}, '', window.location.href);
     } else {
-      // Set an initial empty state.
       history.replaceState({dfa: '', index: 0}, '', window.location.pathname);
-      commitChange(); // This will create the first real history entry.
+      commitChange();
     }
     updateButtonStates();
   });
@@ -532,6 +557,19 @@
 
     return {x: controlPointX, y: controlPointY};
   }
+
+  const instructionsToolbar = document.getElementById('instructionsToolbar');
+  let toolbarHidden = false;
+
+  window.addEventListener('mousemove', (event) => {
+    if (toolbarHidden && event.clientY < 80) {
+      instructionsToolbar.classList.remove('hidden');
+      toolbarHidden = false;
+    } else if (!toolbarHidden && event.clientY > 250) {
+      instructionsToolbar.classList.add('hidden');
+      toolbarHidden = true;
+    }
+  });
 
   const Graph = new ForceGraph(document.getElementById('graph'))
     .nodeId('name')
