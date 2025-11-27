@@ -6,6 +6,10 @@
     }
   </style>
   <script src="//cdn.jsdelivr.net/npm/force-graph"></script>
+  <script type="module">
+    import latexToUnicode from "https://cdn.jsdelivr.net/npm/latex-to-unicode/+esm";
+    window.latexToUnicode = latexToUnicode;
+  </script>
 </head>
 
 <style>
@@ -214,9 +218,9 @@
       const label = labels.join(", ");
       if (!src || !tgt) return;
       if (src === tgt)
-        lines.push(`\t(${sanitize(src.name)}) edge [loop above] node {${label}} ()`);
+        lines.push(`\t(${sanitize(src.name)}) edge [loop above] node {\$${label}\$} ()`);
       else
-        lines.push(`\t(${sanitize(src.name)}) edge node {${label}} (${sanitize(tgt.name)})`);
+        lines.push(`\t(${sanitize(src.name)}) edge node {\$${label}\$} (${sanitize(tgt.name)})`);
     });
     lines.push(';')
 
@@ -580,7 +584,7 @@
         if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
       }
 
-      const label = link.label;
+      label = latexToUnicode(link.label || "");
       const fontSize = MAX_FONT_SIZE / globalScale; // Scale font size with zoom
       ctx.font = `${fontSize}px Sans-Serif`;
       const textWidth = ctx.measureText(label).width;
