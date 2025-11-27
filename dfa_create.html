@@ -98,6 +98,7 @@
 <div class="global-panel">
   Export:
   <button class="panel-button" id="urlBtn">URL</button>
+  <button class="panel-button" id="jsonBtn">JSON</button>
   <button class="panel-button" id="latexBtn">LaTeX</button>
 </div>
 
@@ -148,6 +149,30 @@
       console.error("Invalid DFA data in URL", e);
       return null;
     }
+  }
+
+  function exportToJson(nodes, links) {
+    const exportData = {
+      nodes: nodes.map(n => ({
+        name: n.name,
+        group: n.group ?? "normal"
+      })),
+      links: links.map(l => ({
+        source: typeof l.source === "object" ? l.source.name : l.source,
+        target: typeof l.target === "object" ? l.target.name : l.target,
+        label: l.label ?? ""
+      }))
+    };
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dfa.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   function exportToTikZ(nodes, links) {
@@ -233,6 +258,10 @@
     const encoded = encodeDFAForURL(nodes, links);
     const shareURL = `${window.location.origin}${window.location.pathname}?dfa=${encoded}`;
     openOverlay(shareURL);
+  });
+
+  document.getElementById("jsonBtn").addEventListener("click", () => {
+    exportToJson(nodes, links);
   });
 
   window.addEventListener("DOMContentLoaded", () => {
