@@ -4,14 +4,14 @@ Prototype of a tool for 1010 students to use for creating and testing their FA.
 
 Currently there is only support for DFAs.
 
-You can try out creating a DFA here: https://george.chemmala.com/finite-automaton-autograder/dfa_create
+You can try out creating a DFA here: [https://george.chemmala.com/finite-automaton-autograder/dfa_create](https://george.chemmala.com/finite-automaton-autograder/dfa_create)
 
 ## Creating a DFA and Converting it to a Python Object
 
 1. Run a local server using `python -m http.server` in the terminal in this directory
 2. Open your browser and go to `http://localhost:8000/dfa_create.html`
 3. Create your DFA using the instructions on the top of the page
-4. Click the "Export DFA as JSON" button to download the DFA as a JSON file
+4. Click the "Export: JSON" button to download the DFA as a JSON file
 5. Run `python dfa.py` and modify the main function to load your JSON file instead of dfa.json
 
 ![Create](./img/create.png)
