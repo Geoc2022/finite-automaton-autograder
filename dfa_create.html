@@ -506,6 +506,13 @@
       selectedNode = null;
       nodeForLink = null;
       updateGraphVisuals();
+    } else if (event.key === 'Delete' || event.key === 'Backspace') {
+      if (selectedNode) {
+        removeNode(selectedNode);
+        selectedNode = null;
+        nodeForLink = null;
+        commitChange();
+      }
     } else if (event.key === 'a') {
       if (!selectedNode) return;
       if (selectedNode.group === 'accept') {
