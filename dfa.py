@@ -24,6 +24,7 @@ class DFA:
             {
                 "name": s,
                 "group": (
+                    "start-accept" if s == self.start_state and s in self.accept_states else
                     "start" if s == self.start_state else
                     "accept" if s in self.accept_states else
                     "normal"
@@ -56,9 +57,10 @@ class DFA:
         start_state = None
         accept_states = set()
         for node in data["nodes"]:
-            if node.get("group") == "start":
+            group = node.get("group")
+            if group and "start" in group:
                 start_state = node["name"]
-            elif node.get("group") == "accept":
+            if group and "accept" in group:
                 accept_states.add(node["name"])
         if start_state is None:
             raise ValueError("No start state defined in JSON")

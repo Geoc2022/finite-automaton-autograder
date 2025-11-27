@@ -232,8 +232,8 @@
       const y = (node.y * scale).toFixed(2);
       const pos = `(${x},${-y})`;
       const opts = ["state"];
-      if (node.group === "start") opts.push("initial");
-      if (node.group === "accept") opts.push("accepting");
+      if (node.group && node.group.includes("start")) opts.push("initial");
+      if (node.group && node.group.includes("accept")) opts.push("accepting");
       lines.push(`\t\\node[${opts.join(", ")}] (${sanitize(node.name)}) at ${pos} {\$${node.name}\$};`);
     });
 
@@ -510,23 +510,37 @@
       if (!selectedNode) return;
       if (selectedNode.group === 'accept') {
         selectedNode.group = 'normal';
-      } else {
+      } else if (selectedNode.group === 'start-accept') {
+        selectedNode.group = 'start';
+      } else if (selectedNode.group === 'normal') {
         selectedNode.group = 'accept';
+      } else if (selectedNode.group === 'start') {
+        selectedNode.group = 'start-accept';
       }
       selectedNode = null;
       nodeForLink = null;
       commitChange();
     } else if (event.key === 's') {
       if (!selectedNode) return;
-      const currentStartNode = nodes.find(n => n.group === 'start');
-      if (currentStartNode && currentStartNode !== selectedNode) {
-        alert('There can only be one start node.');
-        return;
-      }
-      if (selectedNode.group === 'start') {
-        selectedNode.group = 'normal';
+
+      const currentStartNode = nodes.find(n => n.group.includes('start'));
+
+      if (selectedNode.group.includes('start')) {
+        if (selectedNode.group.includes('accept')) {
+          selectedNode.group = 'accept';
+        } else {
+          selectedNode.group = 'normal';
+        }
       } else {
-        selectedNode.group = 'start';
+        if (currentStartNode && currentStartNode !== selectedNode) {
+          alert('There can only be one start node.');
+          return;
+        }
+        if (selectedNode.group.includes('accept')) {
+          selectedNode.group = 'start-accept';
+        } else {
+          selectedNode.group = 'start';
+        }
       }
       selectedNode = null;
       nodeForLink = null;
@@ -577,7 +591,17 @@
 
   const Graph = new ForceGraph(document.getElementById('graph'))
     .nodeId('name')
-    .nodeLabel(node => node.name_unicode || node.name)
+    .nodeLabel(node => {
+      let labelSuffix = '';
+      if (node.group && node.group.includes('start') && node.group.includes('accept')) {
+        labelSuffix = ' (start, accept)';
+      } else if (node.group && node.group.includes('start')) {
+        labelSuffix = ' (start)';
+      } else if (node.group && node.group.includes('accept')) {
+        labelSuffix = ' (accept)';
+      }
+      return `${node.name_unicode}${labelSuffix}`;
+    })
     .linkCurvature('curvature')
     .linkDirectionalArrowLength(6)
     .linkDirectionalArrowRelPos(1)
@@ -603,8 +627,9 @@
     })
     .nodeColor(node => {
       if (node === selectedNode) return '#ebcb8b';
-      if (node.group === 'start') return '#8fbcbb';
-      if (node.group === 'accept') return '#88c0d0';
+      if (node.group && node.group.includes('start') && node.group.includes('accept')) return '#b48ead';
+      if (node.group && node.group.includes('start')) return '#8fbcbb';
+      if (node.group && node.group.includes('accept')) return '#88c0d0';
       if (node === dragSourceNode || (interimLink && (node === interimLink.source || node === interimLink.target))) return '#ebcb8b';
       return '#81a1c1';
     })
