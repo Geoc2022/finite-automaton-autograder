@@ -6,10 +6,11 @@ Repo: [https://github.com/Geoc2022/finite-automaton-autograder](https://github.c
 
 Currently there is only support for DFAs.
 
-You can try out creating a DFA here: [https://george.chemmala.com/finite-automaton-autograder/dfa_create](https://george.chemmala.com/finite-automaton-autograder/dfa_create)
+## Creating a DFA and Converting it to LaTeX, shareable link, or Python Object
 
+### Online: [https://george.chemmala.com/finite-automaton-autograder/dfa_create](https://george.chemmala.com/finite-automaton-autograder/dfa_create)
 
-## Creating a DFA and Converting it to a Python Object
+### Locally:
 
 1. Run a local server using `python -m http.server` in the terminal in this directory
 2. Open your browser and go to `http://localhost:8000/dfa_create.html`
@@ -17,7 +18,7 @@ You can try out creating a DFA here: [https://george.chemmala.com/finite-automat
 4. Click the "Export: JSON" button to download the DFA as a JSON file
 5. Run `python dfa.py` and modify the main function to load your JSON file instead of dfa.json
 
-![Create](./img/create.png)
+[![Create](./img/create.png)](https://george.chemmala.com/finite-automaton-autograder/dfa_create?dfa=eyJub2RlcyI6W3sibmFtZSI6InFfMCIsImdyb3VwIjoibm9ybWFsIn0seyJuYW1lIjoicV8xIiwiZ3JvdXAiOiJzdGFydCJ9LHsibmFtZSI6InFfMiIsImdyb3VwIjoiYWNjZXB0In1dLCJsaW5rcyI6W3sic291cmNlIjoicV8wIiwidGFyZ2V0IjoicV8xIiwibGFiZWwiOiJcXGFscGhhXzAgXFxiZXRhXjEgXFxnYW1tYV4qIn0seyJzb3VyY2UiOiJxXzIiLCJ0YXJnZXQiOiJxXzEiLCJsYWJlbCI6IngsIGEgXFxyaWdodGFycm93IGIifSx7InNvdXJjZSI6InFfMiIsInRhcmdldCI6InFfMCIsImxhYmVsIjoiYSJ9LHsic291cmNlIjoicV8yIiwidGFyZ2V0IjoicV8yIiwibGFiZWwiOiJRXFx0aW1lcyhcXFNpZ21hXFxjdXBcXHtcXHZhcmVwc2lsb25cXH0pXFx0aW1lc1xcR2FtbWFcXHRpbWVzIFFcXHRpbWVzXFxHYW1tYV57Kn0ifSx7InNvdXJjZSI6InFfMCIsInRhcmdldCI6InFfMiIsImxhYmVsIjoiZlxccHJpbWUifSx7InNvdXJjZSI6InFfMSIsInRhcmdldCI6InFfMSIsImxhYmVsIjoiUSBcXFNpZ21hIFxcR2FtbWEgXFxkZWx0YSBxXzAgWiBGIn1dfQ)
 
 
 ## Rendering a Python Object DFA
