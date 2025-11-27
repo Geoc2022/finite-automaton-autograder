@@ -107,8 +107,6 @@ Test 4: Passed
 
 ## TODO
 
-- Add LaTeX support to renders (e.g Greek symbols)
-
 - Add a test file which would do the autograding
 
 - Add a FA library to hold the reused rendering functions
