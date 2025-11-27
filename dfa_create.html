@@ -718,9 +718,11 @@
         textPos = getQuadraticBezierPoint(start, controlPoint, end, 0.5);
 
         // Text rotation
-        const tangentX = ((controlPoint.x - start.x) + (end.x - controlPoint.x));
-        const tangentY = ((controlPoint.y - start.y) + (end.y - controlPoint.y));
-        textAngle = Math.atan2(tangentY, tangentX) / 2;
+        const tangentX = 2 * (1 - 0.5) * (controlPoint.x - start.x) + 2 * 0.5 * (end.x - controlPoint.x);
+        const tangentY = 2 * (1 - 0.5) * (controlPoint.y - start.y) + 2 * 0.5 * (end.y - controlPoint.y);
+        textAngle = Math.atan2(tangentY, tangentX);
+        if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
+        if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
 
       } else {
         // Straight link
