@@ -7,8 +7,8 @@
   </style>
   <script src="//cdn.jsdelivr.net/npm/force-graph"></script>
   <script type="module">
-    import latexToUnicode from "https://cdn.jsdelivr.net/npm/latex-to-unicode/+esm";
-    window.latexToUnicode = latexToUnicode;
+    import unicodeit from "https://cdn.jsdelivr.net/npm/unicodeit/+esm";
+    window.unicodeit = unicodeit;
   </script>
 </head>
 
@@ -702,8 +702,8 @@
         if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
       }
 
-      label = latexToUnicode(link.label || "");
-      const fontSize = MAX_FONT_SIZE / globalScale; // Scale font size with zoom
+      label = unicodeit.replace(link.label || "");
+      const fontSize = MAX_FONT_SIZE / globalScale;
       ctx.font = `${fontSize}px Sans-Serif`;
       const textWidth = ctx.measureText(label).width;
       const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2);
