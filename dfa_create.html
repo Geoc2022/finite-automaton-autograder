@@ -317,7 +317,10 @@
     nodes.length = 0;
     links.length = 0;
     if (data) {
-      (data.nodes || []).forEach(n => nodes.push(n));
+      (data.nodes || []).forEach(n => {
+        n.name_unicode = window.unicodeit.replace(n.name);
+        nodes.push(n);
+      });
       (data.links || []).forEach(l => links.push({
         ...l,
         source: l.source,
@@ -452,6 +455,7 @@
         return;
       }
       obj.name = value;
+      obj.name_unicode = window.unicodeit.replace(value);
     } else {
       obj.label = value;
     }
@@ -573,6 +577,7 @@
 
   const Graph = new ForceGraph(document.getElementById('graph'))
     .nodeId('name')
+    .nodeLabel(node => node.name_unicode || node.name)
     .linkCurvature('curvature')
     .linkDirectionalArrowLength(6)
     .linkDirectionalArrowRelPos(1)
@@ -647,7 +652,8 @@
         i++;
         name = 'q_' + i;
       }
-      nodes.push({x: coords.x, y: coords.y, name: name});
+      const name_unicode = window.unicodeit.replace(name);
+      nodes.push({x: coords.x, y: coords.y, name: name, name_unicode: name_unicode});
       commitChange();
     })
     .linkCanvasObjectMode(() => 'after')
