@@ -256,8 +256,9 @@
 
   document.getElementById("urlBtn").addEventListener("click", () => {
     const encoded = encodeDFAForURL(nodes, links);
-    const shareURL = `${window.location.origin}${window.location.pathname}?dfa=${encoded}`;
-    openOverlay(shareURL);
+    const newURL = `${window.location.origin}${window.location.pathname}?dfa=${encoded}`;
+    history.pushState({path: newURL}, '', newURL);
+    openOverlay(newURL);
   });
 
   document.getElementById("jsonBtn").addEventListener("click", () => {
