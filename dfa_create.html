@@ -250,7 +250,7 @@
       const opts = ["state"];
       if (node.group && node.group.includes("start")) opts.push("initial");
       if (node.group && node.group.includes("accept")) opts.push("accepting");
-      lines.push(`\t\\node[${opts.join(", ")}] (${sanitize(node.name)}) at ${pos} {\$${node.name}\$};`);
+      lines.push(`\t\\node[${opts.join(", ")}] (${sanitize(node.name)}) at ${pos} {\\(${node.name}\\)};`);
     });
 
     const grouped = {};
@@ -272,9 +272,9 @@
       const label = labels.join(", ");
       if (!src || !tgt) return;
       if (src === tgt)
-        lines.push(`\t(${sanitize(src.name)}) edge [loop above] node {\$${label}\$} ()`);
+        lines.push(`\t(${sanitize(src.name)}) edge [loop above] node {\\(${label}\\)} ()`);
       else
-        lines.push(`\t(${sanitize(src.name)}) edge node {\$${label}\$} (${sanitize(tgt.name)})`);
+        lines.push(`\t(${sanitize(src.name)}) edge node {\\(${label}\\)} (${sanitize(tgt.name)})`);
     });
     lines.push(';')
 
