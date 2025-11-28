@@ -460,6 +460,7 @@
 
   const updateGraphVisuals = () => {
     assignLinkCurvatures({nodes, links});
+    Graph.nodeColor(Graph.nodeColor());
     Graph.graphData({nodes, links});
   };
 
@@ -535,13 +536,14 @@
       }
     } else if (event.key === 'a') {
       if (!selectedNode) return;
-      if (selectedNode.group === 'accept') {
+      const group = selectedNode.group || 'normal';
+      if (group === 'accept') {
         selectedNode.group = 'normal';
-      } else if (selectedNode.group === 'start-accept') {
+      } else if (group === 'start-accept') {
         selectedNode.group = 'start';
-      } else if (selectedNode.group === 'normal') {
+      } else if (group === 'normal') {
         selectedNode.group = 'accept';
-      } else if (selectedNode.group === 'start') {
+      } else if (group === 'start') {
         selectedNode.group = 'start-accept';
       }
       selectedNode = null;
@@ -550,10 +552,11 @@
     } else if (event.key === 's') {
       if (!selectedNode) return;
 
-      const currentStartNode = nodes.find(n => n.group.includes('start'));
+      const currentStartNode = nodes.find(n => (n.group || '').includes('start'));
+      const group = selectedNode.group || 'normal';
 
-      if (selectedNode.group.includes('start')) {
-        if (selectedNode.group.includes('accept')) {
+      if (group.includes('start')) {
+        if (group.includes('accept')) {
           selectedNode.group = 'accept';
         } else {
           selectedNode.group = 'normal';
@@ -563,7 +566,7 @@
           alert('There can only be one start node.');
           return;
         }
-        if (selectedNode.group.includes('accept')) {
+        if (group.includes('accept')) {
           selectedNode.group = 'start-accept';
         } else {
           selectedNode.group = 'start';
@@ -713,7 +716,7 @@
         name = 'q_' + i;
       }
       const name_unicode = window.unicodeit.replace(name);
-      nodes.push({x: coords.x, y: coords.y, name: name, name_unicode: name_unicode});
+      nodes.push({x: coords.x, y: coords.y, name: name, name_unicode: name_unicode, group: 'normal'});
       commitChange();
     })
     .linkCanvasObjectMode(() => 'after')
