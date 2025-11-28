@@ -526,7 +526,7 @@
       selectedNode = null;
       nodeForLink = null;
       updateGraphVisuals();
-    } else if (event.key === 'Delete' || event.key === 'Backspace') {
+    } else if (event.key === 'Delete' || event.key === 'Backspace' || event.key === 'd') {
       if (selectedNode) {
         removeNode(selectedNode);
         selectedNode = null;
@@ -572,6 +572,14 @@
       selectedNode = null;
       nodeForLink = null;
       commitChange();
+    } else if (event.key === 'Enter') {
+      if (selectedNode) {
+        rename(selectedNode, 'node');
+        selectedNode = null;
+        nodeForLink = null;
+      }
+    } else if (event.key === 'f') {
+      Graph.zoomToFit(400, 100);
     }
   });
 
