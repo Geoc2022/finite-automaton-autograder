@@ -582,7 +582,7 @@
         nodeForLink = null;
       }
     } else if (event.key === 'f') {
-      Graph.zoomToFit(400, 100);
+      Graph.zoomToFit(400, 150);
     }
   });
 
@@ -618,10 +618,10 @@
   let toolbarHidden = false;
 
   window.addEventListener('mousemove', (event) => {
-    if (toolbarHidden && event.clientY < 80) {
+    if (toolbarHidden && event.clientY < 200) {
       instructionsToolbar.classList.remove('hidden');
       toolbarHidden = false;
-    } else if (!toolbarHidden && event.clientY > 500) {
+    } else if (!toolbarHidden && event.clientY > 700) {
       instructionsToolbar.classList.add('hidden');
       toolbarHidden = true;
     }
