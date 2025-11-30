@@ -181,7 +181,7 @@
 </body>
 
 <script>
-  function encodeDFAForURL(nodes, links) {
+  function encodeFAForURL(nodes, links) {
     const exportData = {
       nodes: nodes.map(n => ({
         name: n.name,
@@ -199,12 +199,12 @@
     return encoded;
   }
 
-  function decodeDFAFromURL(encoded) {
+  function decodeFAFromURL(encoded) {
     try {
       const json = atob(encoded.replace(/-/g, "+").replace(/_/g, "/"));
       return JSON.parse(json);
     } catch (e) {
-      console.error("Invalid DFA data in URL", e);
+      console.error("Invalid FA data in URL", e);
       return null;
     }
   }
@@ -226,7 +226,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "dfa.json";
+    a.download = "fa.json";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -235,7 +235,7 @@
 
   function exportToTikZ(nodes, links) {
     const scale = 0.15;
-    const link = `% ${window.location.origin}${window.location.pathname}?dfa=${encodeDFAForURL(nodes, links)}`
+    const link = `% ${window.location.origin}${window.location.pathname}?fa=${encodeFAForURL(nodes, links)}`
     const prelude = "% \\usetikzlibrary{automata, positioning}\n" + link + "\n";
     const tikzHeader = "\\begin{center}\n\\begin{tikzpicture}[shorten >=1pt,auto,node distance=2cm,on grid]\n";
     const tikzFooter = "\\end{tikzpicture}\n\\end{center}";
@@ -316,8 +316,8 @@
   document.getElementById("redoBtn").addEventListener("click", () => history.forward());
 
   document.getElementById("urlBtn").addEventListener("click", () => {
-    const encoded = encodeDFAForURL(nodes, links);
-    const newURL = `${window.location.origin}${window.location.pathname}?dfa=${encoded}`;
+    const encoded = encodeFAForURL(nodes, links);
+    const newURL = `${window.location.origin}${window.location.pathname}?fa=${encoded}`;
     navigator.clipboard.writeText(newURL).then(() => {
       openOverlay(newURL);
     }, () => {
@@ -329,7 +329,7 @@
     exportToJson(nodes, links);
   });
 
-  function loadDfaData(data) {
+  function loadFaData(data) {
     nodes.length = 0;
     links.length = 0;
     if (data) {
@@ -342,7 +342,7 @@
         source: l.source,
         target: l.target
       }));
-      console.log("Loaded DFA from data.");
+      console.log("Loaded FA from data.");
     }
     updateGraphVisuals();
   }
@@ -414,13 +414,13 @@
 
   window.addEventListener("DOMContentLoaded", () => {
     const params = new URLSearchParams(window.location.search);
-    const encoded = params.get("dfa");
+    const encoded = params.get("fa");
     if (encoded) {
-      const data = decodeDFAFromURL(encoded);
-      loadDfaData(data);
-      history.replaceState({dfa: encoded, index: 0}, '', window.location.href);
+      const data = decodeFAFromURL(encoded);
+      loadFaData(data);
+      history.replaceState({fa: encoded, index: 0}, '', window.location.href);
     } else {
-      history.replaceState({dfa: '', index: 0}, '', window.location.pathname);
+      history.replaceState({fa: '', index: 0}, '', window.location.pathname);
       commitChange();
     }
     updateButtonStates();
@@ -431,23 +431,23 @@
     updateButtonStates();
 
     const params = new URLSearchParams(window.location.search);
-    const encoded = params.get("dfa");
-    const data = decodeDFAFromURL(encoded || '');
-    loadDfaData(data);
+    const encoded = params.get("fa");
+    const data = decodeFAFromURL(encoded || '');
+    loadFaData(data);
   });
 
   let historyUpdateTimeout;
   function updateHistory() {
     clearTimeout(historyUpdateTimeout);
     const linksForHistory = links.filter(l => l !== interimLink);
-    const encoded = encodeDFAForURL(nodes, linksForHistory);
+    const encoded = encodeFAForURL(nodes, linksForHistory);
     const currentUrl = new URL(window.location.href);
-    const currentDfa = currentUrl.searchParams.get('dfa');
-    if (encoded !== currentDfa) {
+    const currentFa = currentUrl.searchParams.get('fa');
+    if (encoded !== currentFa) {
       historyIndex++;
       historyLength = historyIndex + 1;
-      currentUrl.searchParams.set('dfa', encoded);
-      history.pushState({dfa: encoded, index: historyIndex}, '', currentUrl.href);
+      currentUrl.searchParams.set('fa', encoded);
+      history.pushState({fa: encoded, index: historyIndex}, '', currentUrl.href);
       updateButtonStates();
     }
   }

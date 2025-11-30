@@ -1,12 +1,48 @@
 {
   "nodes": [
-    { "name": "q_0", "group": "start" },
-    { "name": "q_1", "group": "normal" },
-    { "name": "q_2", "group": "accept" }
+    {
+      "name": "q2",
+      "group": "normal"
+    },
+    {
+      "name": "q0",
+      "group": "start"
+    },
+    {
+      "name": "q1",
+      "group": "accept"
+    }
   ],
   "links": [
-    { "source": "q_0", "target": "q_1", "label": "a" },
-    { "source": "q_1", "target": "q_2", "label": "b" },
-    { "source": "q_2", "target": "q_2", "label": "a,b" }
+    {
+      "source": "q0",
+      "target": "q1",
+      "label": "a"
+    },
+    {
+      "source": "q1",
+      "target": "q1",
+      "label": "a"
+    },
+    {
+      "source": "q1",
+      "target": "q2",
+      "label": "b"
+    },
+    {
+      "source": "q1",
+      "target": "q1",
+      "label": "c"
+    },
+    {
+      "source": "q2",
+      "target": "q2",
+      "label": "a"
+    },
+    {
+      "source": "q2",
+      "target": "q0",
+      "label": "b"
+    }
   ]
 }
