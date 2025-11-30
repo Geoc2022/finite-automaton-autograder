@@ -159,6 +159,8 @@
   <button class="panel-button" id="urlBtn">URL</button>
   <button class="panel-button" id="jsonBtn">JSON</button>
   <button class="panel-button" id="latexBtn">LaTeX</button>
+  <a class="panel-button" style="border: 0px; padding: 8 8px; text-decoration: none;" id="helpBtn"
+    href="https://github.com/Geoc2022/finite-automaton-autograder" target="_blank" rel="noopener noreferrer">&#63;</a>
 </div>
 
 <!-- Overlay -->
@@ -424,6 +426,17 @@
       commitChange();
     }
     updateButtonStates();
+
+    const helpBtn = document.getElementById('helpBtn');
+    const instructionsToolbar = document.getElementById('instructionsToolbar');
+
+    helpBtn.addEventListener('mouseenter', () => {
+      instructionsToolbar.classList.remove('hidden');
+    });
+
+    helpBtn.addEventListener('mouseleave', () => {
+      instructionsToolbar.classList.add('hidden');
+    });
   });
 
   window.addEventListener('popstate', (event) => {
