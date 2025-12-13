@@ -36,6 +36,83 @@
     --nord10-a625: #5e81aca3;
   }
 
+  .edit-panel-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .edit-panel-checkbox-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-left: 28px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    color: var(--nord6);
+  }
+
+  .edit-panel-checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+
+  .edit-panel-checkbox-checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 20px;
+    width: 20px;
+    background-color: var(--nord0);
+    border: 1px solid var(--nord3);
+    border-radius: 4px;
+  }
+
+  .edit-panel-checkbox-container input:checked~.edit-panel-checkbox-checkmark {
+    background-color: var(--nord10);
+    border-color: var(--nord10);
+  }
+
+  .edit-panel-checkbox-checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+  }
+
+  .edit-panel-checkbox-container input:checked~.edit-panel-checkbox-checkmark:after {
+    display: block;
+  }
+
+  .edit-panel-checkbox-container .edit-panel-checkbox-checkmark:after {
+    left: 7px;
+    top: 3px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+  }
+
+  #edit-is-start-node:checked~.edit-panel-checkbox-checkmark {
+    background-color: var(--nord7);
+    border-color: var(--nord7);
+  }
+
+  #edit-is-accept-node:checked~.edit-panel-checkbox-checkmark {
+    background-color: var(--nord8);
+    border-color: var(--nord8);
+  }
+
   .global-panel {
     position: fixed;
     left: 50%;
@@ -148,6 +225,46 @@
     opacity: 0;
     pointer-events: none;
   }
+
+  .edit-panel {
+    position: fixed;
+    z-index: 1;
+    background: var(--nord1);
+    border: 1px solid var(--nord3);
+    border-radius: 8px;
+    padding: 16px;
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--nord6);
+    font-family: sans-serif;
+    width: 250px;
+    transition: left 0.2s ease, top 0.2s ease;
+  }
+
+  .edit-panel.visible {
+    display: flex;
+  }
+
+  .edit-panel-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  #edit-input {
+    background: var(--nord0);
+    color: var(--nord6);
+    border: 1px solid var(--nord3);
+    border-radius: 4px;
+    padding: 8px;
+    font-family: monospace;
+  }
+
+  #edit-panel-title {
+    margin: 0;
+    font-size: 16px;
+  }
 </style>
 
 <!-- Panel -->
@@ -180,6 +297,27 @@
     </div>
   </div>
   <div id="graph"></div>
+
+  <div id="edit-panel" class="edit-panel">
+    <h4 id="edit-panel-title">Edit Name</h4>
+    <input type="text" id="edit-input">
+    <div class="edit-panel-options">
+      <label class="edit-panel-checkbox-container">
+        <input type="checkbox" id="edit-is-start-node">
+        <span class="edit-panel-checkbox-checkmark"></span>
+        Start
+      </label>
+      <label class="edit-panel-checkbox-container">
+        <input type="checkbox" id="edit-is-accept-node">
+        <span class="edit-panel-checkbox-checkmark"></span>
+        Accept
+      </label>
+    </div>
+    <div class="edit-panel-buttons">
+      <button id="save-edit-btn" class="panel-button">Save</button>
+      <button id="cancel-edit-btn" class="panel-button">Cancel</button>
+    </div>
+  </div>
 </body>
 
 <script>
@@ -479,22 +617,161 @@
 
   const distance = (node1, node2) => Math.hypot(node1.x - node2.x, node1.y - node2.y);
 
-  const rename = (obj, type) => {
-    let currentValue = (type === 'link') ? obj.label : obj.name;
-    let value = prompt('Name this ' + type + ':', currentValue);
-    if (!value) return;
+  const editPanel = document.getElementById('edit-panel');
+  const editPanelTitle = document.getElementById('edit-panel-title');
+  const editInput = document.getElementById('edit-input');
+  const saveEditBtn = document.getElementById('save-edit-btn');
+  const cancelEditBtn = document.getElementById('cancel-edit-btn');
+  const editPanelOptions = editPanel.querySelector('.edit-panel-options');
+  const editIsStartNode = document.getElementById('edit-is-start-node');
+  const editIsAcceptNode = document.getElementById('edit-is-accept-node');
+  let editingElement = null;
+
+  function showEditPanel(obj, type, event) {
+    editingElement = {obj, type};
+    editPanelTitle.textContent = type;
+    editInput.value = (type === 'link') ? (obj.label || '') : obj.name;
+
     if (type === 'node') {
+      editPanelOptions.style.display = 'flex';
+      editIsStartNode.checked = (obj.group || '').includes('start');
+      editIsAcceptNode.checked = (obj.group || '').includes('accept');
+    } else {
+      editPanelOptions.style.display = 'none';
+    }
+
+    editPanel.style.visibility = 'hidden';
+    editPanel.classList.add('visible');
+
+    const panelWidth = editPanel.offsetWidth;
+    const panelHeight = editPanel.offsetHeight;
+
+    let x = event.clientX + 20;
+    let y = event.clientY - panelHeight / 2;
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    if (x + panelWidth > viewportWidth - 16) {
+      x = event.clientX - panelWidth - 20;
+    }
+
+    if (y < 16) {
+      y = 16;
+    } else if (y + panelHeight > viewportHeight - 16) {
+      y = viewportHeight - panelHeight - 16;
+    }
+
+    editPanel.style.left = `${x}px`;
+    editPanel.style.top = `${y}px`;
+    editPanel.style.visibility = 'visible';
+
+    editInput.focus();
+    editInput.select();
+  }
+
+  function hideEditPanel() {
+    editPanel.classList.remove('visible');
+    editingElement = null;
+  }
+
+  function saveEdit() {
+    if (!editingElement) return;
+    const {obj, type} = editingElement;
+    const value = editInput.value;
+
+    if (type === 'node') {
+      if (!value) {
+        alert('Node name cannot be empty.');
+        return;
+      }
       if (nodes.some(n => n.name === value && n !== obj)) {
         alert('A node with this name already exists.');
         return;
       }
       obj.name = value;
       obj.name_unicode = window.unicodeit.replace(value);
+
+      const isStart = editIsStartNode.checked;
+      const isAccept = editIsAcceptNode.checked;
+
+      if (isStart) {
+        const currentStartNode = nodes.find(n => (n.group || '').includes('start') && n !== obj);
+        if (currentStartNode) {
+          alert('There can only be one start node.');
+          editIsStartNode.checked = false;
+        }
+      }
+
+      const finalIsStart = editIsStartNode.checked;
+      const finalIsAccept = editIsAcceptNode.checked;
+
+      if (finalIsStart && finalIsAccept) {
+        obj.group = 'start-accept';
+      } else if (finalIsStart) {
+        obj.group = 'start';
+      } else if (finalIsAccept) {
+        obj.group = 'accept';
+      } else {
+        obj.group = 'normal';
+      }
     } else {
       obj.label = value;
     }
+    hideEditPanel();
     commitChange();
-  };
+  }
+
+  function updateEditorPosition() {
+    if (!editingElement || !editPanel.classList.contains('visible')) return;
+
+    const {obj, type} = editingElement;
+    let x, y;
+
+    if (type === 'node') {
+      x = obj.x;
+      y = obj.y;
+    } else if (type === 'link') {
+      const start = obj.source;
+      const end = obj.target;
+      if (typeof start !== 'object' || typeof end !== 'object') return;
+      x = start.x + (end.x - start.x) / 2;
+      y = start.y + (end.y - start.y) / 2;
+    } else {
+      return;
+    }
+
+    const {x: screenX, y: screenY} = Graph.graph2ScreenCoords(x, y);
+    const graphRect = document.getElementById('graph').getBoundingClientRect();
+
+    const panelWidth = editPanel.offsetWidth;
+    const panelHeight = editPanel.offsetHeight;
+
+    let panelX = screenX + graphRect.left + 20;
+    let panelY = screenY + graphRect.top - panelHeight / 2;
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    if (panelX + panelWidth > viewportWidth - 16) {
+      panelX = screenX + graphRect.left - panelWidth - 20;
+    }
+    if (panelY < 16) {
+      panelY = 16;
+    } else if (panelY + panelHeight > viewportHeight - 16) {
+      panelY = viewportHeight - panelHeight - 16;
+    }
+
+    editPanel.style.left = `${panelX}px`;
+    editPanel.style.top = `${panelY}px`;
+  }
+
+  saveEditBtn.addEventListener('click', saveEdit);
+  cancelEditBtn.addEventListener('click', hideEditPanel);
+  document.getElementById('edit-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveEdit();
+    if (e.key === 'Escape') hideEditPanel();
+  });
 
   const setInterimLink = (source, target) => {
     let linkId = linkIdCounter++;
@@ -540,57 +817,61 @@
       selectedNode = null;
       nodeForLink = null;
       updateGraphVisuals();
+      if (editPanel.classList.contains('visible')) {
+        hideEditPanel();
+      }
     } else if (event.key === 'Delete' || event.key === 'Backspace' || event.key === 'd') {
-      if (selectedNode) {
+      if (selectedNode && !editPanel.classList.contains('visible')) {
         removeNode(selectedNode);
         selectedNode = null;
         nodeForLink = null;
         commitChange();
       }
     } else if (event.key === 'a') {
-      if (!selectedNode) return;
-      const group = selectedNode.group || 'normal';
-      if (group === 'accept') {
-        selectedNode.group = 'normal';
-      } else if (group === 'start-accept') {
-        selectedNode.group = 'start';
-      } else if (group === 'normal') {
-        selectedNode.group = 'accept';
-      } else if (group === 'start') {
-        selectedNode.group = 'start-accept';
-      }
-      selectedNode = null;
-      nodeForLink = null;
-      commitChange();
-    } else if (event.key === 's') {
-      if (!selectedNode) return;
-
-      const currentStartNode = nodes.find(n => (n.group || '').includes('start'));
-      const group = selectedNode.group || 'normal';
-
-      if (group.includes('start')) {
-        if (group.includes('accept')) {
-          selectedNode.group = 'accept';
-        } else {
+      if (selectedNode && !editPanel.classList.contains('visible')) {
+        const group = selectedNode.group || 'normal';
+        if (group === 'accept') {
           selectedNode.group = 'normal';
-        }
-      } else {
-        if (currentStartNode && currentStartNode !== selectedNode) {
-          alert('There can only be one start node.');
-          return;
-        }
-        if (group.includes('accept')) {
-          selectedNode.group = 'start-accept';
-        } else {
+        } else if (group === 'start-accept') {
           selectedNode.group = 'start';
+        } else if (group === 'normal') {
+          selectedNode.group = 'accept';
+        } else if (group === 'start') {
+          selectedNode.group = 'start-accept';
         }
+        selectedNode = null;
+        nodeForLink = null;
+        commitChange();
       }
-      selectedNode = null;
-      nodeForLink = null;
-      commitChange();
+    } else if (event.key === 's') {
+      if (selectedNode && !editPanel.classList.contains('visible')) {
+        const currentStartNode = nodes.find(n => (n.group || '').includes('start'));
+        const group = selectedNode.group || 'normal';
+
+        if (group.includes('start')) {
+          if (group.includes('accept')) {
+            selectedNode.group = 'accept';
+          } else {
+            selectedNode.group = 'normal';
+          }
+        } else {
+          if (currentStartNode && currentStartNode !== selectedNode) {
+            alert('There can only be one start node.');
+            return;
+          }
+          if (group.includes('accept')) {
+            selectedNode.group = 'start-accept';
+          } else {
+            selectedNode.group = 'start';
+          }
+        }
+        selectedNode = null;
+        nodeForLink = null;
+        commitChange();
+      }
     } else if (event.key === 'Enter') {
-      if (selectedNode) {
-        rename(selectedNode, 'node');
+      if (selectedNode && !editPanel.classList.contains('visible')) {
+        showEditPanel(selectedNode, 'node', event);
         selectedNode = null;
         nodeForLink = null;
       }
@@ -656,6 +937,7 @@
     .linkCurvature('curvature')
     .linkDirectionalArrowLength(6)
     .linkDirectionalArrowRelPos(1)
+    .onEngineTick(updateEditorPosition)
     .onNodeDrag(dragNode => {
       dragSourceNode = dragNode;
       for (let node of nodes) {
@@ -687,12 +969,24 @@
     .linkColor(link => link === interimLink ? getCssVar('--nord13') : getCssVar('--nord9'))
     .linkLineDash(link => link === interimLink ? [2, 2] : [])
     .onNodeClick((node, event) => {
+      if (editingElement) {
+        if (editingElement.obj === node && editingElement.type === 'node') {
+          editInput.focus();
+        } else {
+          hideEditPanel();
+        }
+        return;
+      }
       if (event.shiftKey) {
         removeNode(node);
         commitChange();
-      } else rename(node, 'node');
+      } else showEditPanel(node, 'node', event);
     })
     .onNodeRightClick(node => {
+      if (editingElement) {
+        hideEditPanel();
+        return;
+      }
       if (nodeForLink) {
         addLink(nodeForLink, node);
         selectedNode = null;
@@ -709,16 +1003,29 @@
       updateGraphVisuals();
     })
     .onLinkClick((link, event) => {
+      if (editingElement) {
+        if (editingElement.obj === link && editingElement.type === 'link') {
+          editInput.focus();
+        } else {
+          hideEditPanel();
+        }
+        return;
+      }
       if (event.shiftKey) {
         removeLink(link)
         commitChange();
       }
       else {
-        rename(link, 'link')
+        showEditPanel(link, 'link', event)
       }
     })
     .onLinkRightClick(link => { })
     .onBackgroundClick(event => {
+      if (editingElement) {
+        hideEditPanel();
+        return;
+      }
+
       selectedNode = null;
       nodeForLink = null;
       let coords = Graph.screen2GraphCoords(event.layerX, event.layerY);
