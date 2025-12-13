@@ -1,0 +1,48 @@
+{
+  "nodes": [
+    {
+      "name": "q1",
+      "group": "normal"
+    },
+    {
+      "name": "q2",
+      "group": "accept"
+    },
+    {
+      "name": "q0",
+      "group": "start"
+    }
+  ],
+  "links": [
+    {
+      "source": "q0",
+      "target": "q0",
+      "label": "a"
+    },
+    {
+      "source": "q0",
+      "target": "q1",
+      "label": "a"
+    },
+    {
+      "source": "q0",
+      "target": "q0",
+      "label": "b"
+    },
+    {
+      "source": "q1",
+      "target": "q2",
+      "label": "b"
+    },
+    {
+      "source": "q2",
+      "target": "q2",
+      "label": "a"
+    },
+    {
+      "source": "q2",
+      "target": "q2",
+      "label": "b"
+    }
+  ]
+}
