@@ -16,7 +16,7 @@ Repo: [https://github.com/Geoc2022/finite-automaton-autograder](https://github.c
 4. Click the "Export: JSON" button to download the FA as a JSON file
 5. Run `python dfa.py` and modify the main function to load your JSON file instead of dfa.json
 
-[![Create](./img/create.png)](https://george.chemmala.com/finite-automaton-autograder/fa_create?fa=eyJub2RlcyI6W3sibmFtZSI6InFfMCIsImdyb3VwIjoibm9ybWFsIn0seyJuYW1lIjoicV8xIiwiZ3JvdXAiOiJzdGFydCJ9LHsibmFtZSI6InFfMiIsImdyb3VwIjoiYWNjZXB0In1dLCJsaW5rcyI6W3sic291cmNlIjoicV8wIiwidGFyZ2V0IjoicV8xIiwibGFiZWwiOiJcXGFscGhhXzAgXFxiZXRhXjEgXFxnYW1tYV4qIn0seyJzb3VyY2UiOiJxXzIiLCJ0YXJnZXQiOiJxXzEiLCJsYWJlbCI6IngsIGEgXFxyaWdodGFycm93IGIifSx7InNvdXJjZSI6InFfMiIsInRhcmdldCI6InFfMCIsImxhYmVsIjoiYSJ9LHsic291cmNlIjoicV8yIiwidGFyZ2V0IjoicV8yIiwibGFiZWwiOiJRXFx0aW1lcyhcXFNpZ21hXFxjdXBcXHtcXHZhcmVwc2lsb25cXH0pXFx0aW1lc1xcR2FtbWFcXHRpbWVzIFFcXHRpbWVzXFxHYW1tYV57Kn0ifSx7InNvdXJjZSI6InFfMCIsInRhcmdldCI6InFfMiIsImxhYmVsIjoiZlxccHJpbWUifSx7InNvdXJjZSI6InFfMSIsInRhcmdldCI6InFfMSIsImxhYmVsIjoiUSBcXFNpZ21hIFxcR2FtbWEgXFxkZWx0YSBxXzAgWiBGIn1dfQ)
+[![Create](./img/create.png)](https://youtu.be/buHxhtm65_8)
 
 
 ## Running and Testing a DFA
