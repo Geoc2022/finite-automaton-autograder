@@ -111,7 +111,7 @@ class PDA:
                         {
                             "source": src,
                             "target": dst[0],
-                            "label": f"{symbol},{dst[2]};{dst[1]}",
+                            "label": f"{symbol or '\\epsilon'},{dst[2] or '\\epsilon'} -> {dst[1] or '\\epsilon'}",
                         }
                     )
 
@@ -145,28 +145,55 @@ class PDA:
         for link in data["links"]:
             src = link["source"]
             dst = link["target"]
-            label = link.get("label", "a,a;a")
-            parts = label.split(",")
-            symbol = parts[0]
-            stack_op = parts[1].split(";")
-            pop = stack_op[0]
-            push = stack_op[1]
+            full_label = link.get("label", "")
+            for label in full_label.split("\n"):
+                label = label.strip()
+                if not label:
+                    continue
 
-            if symbol not in ["", "\\epsilon"]:
-                alphabet.add(symbol)
+                if "->" in label:
+                    parts = label.split("->")
+                    push = parts[1].strip()
+                    left = parts[0].strip()
+                elif ";" in label:
+                    parts = label.split(";")
+                    push = parts[1].strip()
+                    left = parts[0].strip()
+                else:
+                    push = ""
+                    left = label
 
-            if pop not in ["", "\\epsilon"]:
-                stack_alphabet.add(pop)
+                if "," in left:
+                    l_parts = [p.strip() for p in left.split(",")]
+                    pop = l_parts[-1]
+                    symbols = l_parts[:-1]
+                    if not symbols:
+                        symbols = [""]
+                else:
+                    symbols = [left]
+                    pop = ""
 
-            if push not in ["", "\\epsilon"]:
-                for char in push:
-                    stack_alphabet.add(char)
+                for symbol in symbols:
+                    if symbol in ["", "\\epsilon"]:
+                        symbol = ""
+                    if pop in ["", "\\epsilon"]:
+                        pop = ""
+                    if push in ["", "\\epsilon"]:
+                        push = ""
 
-            if src not in transitions:
-                transitions[src] = {}
-            if symbol not in transitions[src]:
-                transitions[src][symbol] = []
-            transitions[src][symbol].append((dst, push, pop))
+                    if symbol:
+                        alphabet.add(symbol)
+                    if pop:
+                        stack_alphabet.add(pop)
+                    if push:
+                        for char in push:
+                            stack_alphabet.add(char)
+
+                    if src not in transitions:
+                        transitions[src] = {}
+                    if symbol not in transitions[src]:
+                        transitions[src][symbol] = []
+                    transitions[src][symbol].append((dst, push, pop))
 
         self.states = states
         self.alphabet = alphabet

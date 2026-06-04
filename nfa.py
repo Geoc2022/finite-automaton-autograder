@@ -94,14 +94,18 @@ class NFA:
         for link in data["links"]:
             src = link["source"]
             dst = link["target"]
-            symbol = link.get("label", "a")
-            if symbol not in ["", "\\epsilon"]:
-                alphabet.add(symbol)
-            if src not in transitions:
-                transitions[src] = {}
-            if symbol not in transitions[src]:
-                transitions[src][symbol] = []
-            transitions[src][symbol].append(dst)
+            label = link.get("label", "a")
+            for symbol in label.split(","):
+                symbol = symbol.strip()
+                if symbol == "\\epsilon":
+                    symbol = ""
+                if symbol != "":
+                    alphabet.add(symbol)
+                if src not in transitions:
+                    transitions[src] = {}
+                if symbol not in transitions[src]:
+                    transitions[src][symbol] = []
+                transitions[src][symbol].append(dst)
 
         self.states = states
         self.alphabet = alphabet

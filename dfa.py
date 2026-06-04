@@ -74,11 +74,15 @@ class DFA:
         for link in data["links"]:
             src = link["source"]
             dst = link["target"]
-            symbol = link.get("label", "a")
-            alphabet.add(symbol)
-            if src not in transitions:
-                transitions[src] = {}
-            transitions[src][symbol] = dst
+            label = link.get("label", "a")
+            for symbol in label.split(","):
+                symbol = symbol.strip()
+                if symbol == "\\epsilon" or not symbol:
+                    continue
+                alphabet.add(symbol)
+                if src not in transitions:
+                    transitions[src] = {}
+                transitions[src][symbol] = dst
 
         self.states = states
         self.alphabet = alphabet
