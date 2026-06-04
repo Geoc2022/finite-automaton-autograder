@@ -1,10 +1,5 @@
 <head>
-  <style>
-    body {
-      margin: 0;
-      background-color: var(--nord6);
-    }
-  </style>
+  <meta charset="UTF-8">
   <script src="//cdn.jsdelivr.net/npm/force-graph"></script>
   <script type="module">
     import unicodeit from "https://cdn.jsdelivr.net/npm/unicodeit/+esm";
@@ -34,8 +29,32 @@
     --nord0-a80: #2e3440cc;
     --nord6-a625: #eceff4a3;
     --nord10-a625: #5e81aca3;
+
+    --bg-color: var(--nord6);
+    --text-color: var(--nord3);
+    --label-bg: var(--nord6-a625);
+    --label-text: var(--nord10-a625);
+    --panel-bg: var(--nord0);
+    --panel-btn-hover: var(--nord1);
   }
 
+  body.dark-theme {
+    --bg-color: var(--nord0);
+    --text-color: var(--nord4);
+    --label-bg: #2e3440a3;
+    --label-text: #88c0d0a3;
+    --panel-bg: var(--nord1);
+    --panel-btn-hover: var(--nord2);
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--bg-color);
+    transition: background-color 0.2s ease;
+  }
+</style>
+
+<style>
   .edit-panel-options {
     display: flex;
     flex-direction: column;
@@ -121,16 +140,17 @@
     height: 46px;
     padding: 4px 12px;
     z-index: 101;
-    background: var(--nord0);
+    background: var(--panel-bg);
     border-radius: 8px 8px 0 0;
     text-align: center;
     font-family: sans-serif;
     font-size: 14px;
-    color: var(--nord3);
+    color: var(--text-color);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12px;
+    transition: background 0.2s ease, color 0.2s ease;
   }
 
   .panel-button {
@@ -146,7 +166,7 @@
   }
 
   .panel-button:hover {
-    background: var(--nord1);
+    background: var(--panel-btn-hover);
   }
 
   .panel-button:disabled {
@@ -208,9 +228,9 @@
     z-index: 90;
     background: #2e344000;
     border-radius: 8px;
-    color: var(--nord3);
+    color: var(--text-color);
     white-space: nowrap;
-    transition: opacity .3s;
+    transition: opacity .3s, color 0.2s ease;
 
     display: flex;
     align-items: center;
@@ -239,7 +259,7 @@
     color: var(--nord6);
     font-family: sans-serif;
     width: 250px;
-    transition: left 0.2s ease, top 0.2s ease;
+    transition: left 0.2s ease, top 0.2s ease, background-color 0.2s ease, color 0.2s ease;
   }
 
   .edit-panel.visible {
@@ -269,6 +289,8 @@
 
 <!-- Panel -->
 <div class="global-panel">
+  <button class="panel-button" id="themeBtn" style="border: none; background: transparent; font-size: 18px; padding: 0 4px; color: var(--nord6);">◑</button>
+  <div style="border-left: 1px solid var(--nord3); height: 24px; margin: 0 2px;"></div>
   <button class="panel-button" id="undoBtn">Undo</button>
   <button class="panel-button" id="redoBtn">Redo</button>
   <div style="border-left: 1px solid var(--nord3); height: 24px; margin: 0 6px;"></div>
@@ -447,6 +469,13 @@
     if (e.target === overlay) closePort();
   });
 
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    document.body.classList.toggle("dark-theme");
+    const isDark = document.body.classList.contains("dark-theme");
+    document.getElementById("themeBtn").textContent = isDark ? "◐" : "◑";
+    updateGraphVisuals();
+  });
+
   document.getElementById("latexBtn").addEventListener("click", () => {
     const tikz = exportToTikZ(nodes, links);
     openOverlay(tikz);
@@ -489,9 +518,7 @@
 </script>
 
 <script>
-  const root = document.querySelector(':root');
-  const computedRoot = getComputedStyle(root);
-  const getCssVar = (name) => computedRoot.getPropertyValue(name);
+  const getCssVar = (name) => getComputedStyle(document.body).getPropertyValue(name);
 
   let linkIdCounter = 0;
   let nodes = [], links = [];
@@ -1101,11 +1128,11 @@
       ctx.save();
       ctx.translate(textPos.x, textPos.y);
       ctx.rotate(textAngle);
-      ctx.fillStyle = getCssVar('--nord6-a625');
+      ctx.fillStyle = getCssVar('--label-bg');
       ctx.fillRect(-bckgDimensions[0] / 2, -bckgDimensions[1] / 2, ...bckgDimensions);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = getCssVar('--nord10-a625');
+      ctx.fillStyle = getCssVar('--label-text');
       ctx.fillText(label, 0, 0);
       ctx.restore();
     });
