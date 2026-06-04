@@ -18,6 +18,45 @@ Repo: [https://github.com/Geoc2022/finite-automaton-autograder](https://github.c
 
 [![Create](./img/create.png)](https://youtu.be/buHxhtm65_8)
 
+## How to use this with Gradescope
+
+This project is designed to be easily integrated with Gradescope for autograding assignments. The `example_assignments` directory provides a template for setting up homework assignments.
+
+```text
+example_assignments
+├── hw1
+│   ├── autograder
+│   │   ├── autograder.zip
+│   │   ├── student_files.txt
+│   │   └── tests
+│   └── sol
+│       ├── handout.md
+│       ├── sol1.json
+│       ├── sol2a.json
+│       └── sol2b.json
+└── zipAutograder
+    ├── dfa.py
+    ├── generate.py
+    ├── grader.py
+    ├── requirements.txt
+    ├── run_tests.py
+    └── setup.sh
+```
+
+### Setup and Generation
+
+1. `zipAutograder/`: Contains the core logic and scripts required for the Gradescope environment, including `dfa.py`, `grader.py`, and `setup.sh` (for installing dependencies).
+2. `hw*/sol/`: Contains the problem handout and reference solutions.
+3. `hw*/autograder/`: Contains the test suite (`tests/`) and `student_files.txt` which lists the files students are expected to submit.
+
+To generate a Gradescope-compatible `autograder.zip` for a specific homework (e.g., Homework 1), run the following command from the `example_assignments` directory:
+
+```bash
+python zipAutograder/generate.py -hw 1
+```
+
+This script bundles the generic autograder files with the homework-specific tests and solution metadata into `example_assignments/hw1/autograder/autograder.zip`, which can be uploaded directly to Gradescope.
+
 
 ## Running and Testing a DFA
 

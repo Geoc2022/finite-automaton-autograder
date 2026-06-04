@@ -1,0 +1,29 @@
+{
+  "nodes": [
+    {
+      "name": "q_0",
+      "group": "start"
+    },
+    {
+      "name": "q_1",
+      "group": "accept"
+    }
+  ],
+  "links": [
+    {
+      "source": "q_0",
+      "target": "q_1",
+      "label": "b"
+    },
+    {
+      "source": "q_1",
+      "target": "q_1",
+      "label": "a,b"
+    },
+    {
+      "source": "q_0",
+      "target": "q_0",
+      "label": "a"
+    }
+  ]
+}
